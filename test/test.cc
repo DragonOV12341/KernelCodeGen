@@ -48,61 +48,62 @@ void test_operators() {
   auto&& sourceCode = generator.codegen(module);
 }
 
-// void test_matmul() {
+void test_matmul() {
 
-//   /* 1. Demo */
-//   KernelCodeGenerator generator("CUDA");
+  /* 1. Demo */
+  KernelCodeGenerator generator("CUDA");
   
-//   auto graph = generator.createGraph("matmul_demo");
-//   generator.setLogMode(Log::Debug);
+  auto graph = generator.createGraph("matmul_demo");
+  generator.setLogMode(Log::Debug);
 
-//   int m = 4096, n = 2048, k = 1024;
-//   auto A = graph.create<PlaceHolder>(std::vector<int64_t>{m, k}, std::string{"float32"});
-//   auto B = graph.create<PlaceHolder>(std::vector<int64_t>{k, n}, std::string{"float32"});
-//   auto C = graph.create<Matmul>(A, B);
-//   auto D = graph.create<Relu>(C, MemorySpace::inplace);
+  int m = 4096, n = 2048, k = 1024;
+  auto A = graph.create<PlaceHolder>(std::vector<int64_t>{m, k}, std::string{"float32"});
+  auto B = graph.create<PlaceHolder>(std::vector<int64_t>{k, n}, std::string{"float32"});
+  auto C = graph.create<Matmul>(A, B);
+  auto D = graph.create<Relu>(C, MemorySpace::inplace);
 
-//   graph.dump();
-//   auto module = generator.optimize(graph);
-//   generator.dump(module);
-//   auto&& sourceCode = generator.codegen(module);
-//   generator.save(sourceCode, "../test/matmul/matmulKernel.cu");
-//   std::string adaptorCode = "";
-//   adaptorCode += "#include \"matmulKernel.cu\"\n";
-//   adaptorCode += "const int M = " + std::to_string(m) + ";\n";
-//   adaptorCode += "const int N = " + std::to_string(n) + ";\n";
-//   adaptorCode += "const int K = " + std::to_string(k) + ";\n";
-//   adaptorCode += "#define kernelFunc matmul_demo::kernel0\n";
-//   generator.save(adaptorCode, "../test/matmul/adaptor.cu");
-//   system("cd ../build && make matmul && ../bin/matmul");
+  graph.dump();
+  auto module = generator.optimize(graph);
+  generator.dump(module);
+  auto&& sourceCode = generator.codegen(module);
+  generator.save(sourceCode, "../test/matmul/matmulKernel.cu");
+  std::string adaptorCode = "";
+  adaptorCode += "#include \"matmulKernel.cu\"\n";
+  adaptorCode += "const int M = " + std::to_string(m) + ";\n";
+  adaptorCode += "const int N = " + std::to_string(n) + ";\n";
+  adaptorCode += "const int K = " + std::to_string(k) + ";\n";
+  adaptorCode += "#define kernelFunc matmul_demo::kernel0\n";
+  generator.save(adaptorCode, "../test/matmul/adaptor.cu");
+  system("cd ../build && make matmul && ../bin/matmul");
 
-//   /* 2. Batch perf test.*/
-//   std::vector<int64_t> dims {256, 512, 768, 1024, 1536, 2048, 3072, 4096, 5120, 6144, 7168, 8192, 9216, 10240, 11264, 12288, 13312, 14336, 15360, 16384};
-//   for (auto dim : dims) {
-//     auto fileName = "Matmul_M" + std::to_string(dim) + "_N" + std::to_string(dim) + "_K" + std::to_string(dim);
-//     auto graph = generator.createGraph(fileName);
-//     generator.setLogMode(Log::Release);
+  /* 2. Batch perf test.*/
+  std::vector<int64_t> dims {256, 512, 768, 1024, 1536, 2048, 3072, 4096, 5120, 6144, 7168, 8192, 9216, 10240, 11264, 12288, 13312, 14336, 15360, 16384};
+  for (auto dim : dims) {
+    auto fileName = "Matmul_M" + std::to_string(dim) + "_N" + std::to_string(dim) + "_K" + std::to_string(dim);
+    auto graph = generator.createGraph(fileName);
+    generator.setLogMode(Log::Release);
 
-//     int m = dim, n = dim, k = dim;
-//     auto A = graph.create<PlaceHolder>(std::vector<int64_t>{m, k}, std::string{"float32"});
-//     auto B = graph.create<PlaceHolder>(std::vector<int64_t>{k, n}, std::string{"float32"});
-//     auto C = graph.create<Matmul>(A, B, MemorySpace::global);
+    int m = dim, n = dim, k = dim;
+    auto A = graph.create<PlaceHolder>(std::vector<int64_t>{m, k}, std::string{"float32"});
+    auto B = graph.create<PlaceHolder>(std::vector<int64_t>{k, n}, std::string{"float32"});
+    // auto C = graph.create<Matmul>(A, B, MemorySpace::global);
+    auto C = graph.create<Matmul>(A, B, std::string{"float32"});
 
-//     auto module = generator.optimize(graph);
-//     auto&& sourceCode = generator.codegen(module);
-//     auto srcFile = "../test/matmul/" + fileName + ".cu";
-//     generator.save(sourceCode, srcFile);
+    auto module = generator.optimize(graph);
+    auto&& sourceCode = generator.codegen(module);
+    auto srcFile = "../test/matmul/" + fileName + ".cu";
+    generator.save(sourceCode, srcFile);
 
-//     std::string adaptorCode = "";
-//     adaptorCode += "#include \"" + fileName + ".cu\"\n";
-//     adaptorCode += "const int M = " + std::to_string(m) + ";\n";
-//     adaptorCode += "const int N = " + std::to_string(n) + ";\n";
-//     adaptorCode += "const int K = " + std::to_string(k) + ";\n";
-//     adaptorCode += "#define kernelFunc " + fileName + "::kernel0\n";
-//     generator.save(adaptorCode, "../test/matmul/adaptor.cu");
-//     system("cd ../build && make matmul && ../bin/matmul");
-//   }
-// }
+    std::string adaptorCode = "";
+    adaptorCode += "#include \"" + fileName + ".cu\"\n";
+    adaptorCode += "const int M = " + std::to_string(m) + ";\n";
+    adaptorCode += "const int N = " + std::to_string(n) + ";\n";
+    adaptorCode += "const int K = " + std::to_string(k) + ";\n";
+    adaptorCode += "#define kernelFunc " + fileName + "::kernel0\n";
+    generator.save(adaptorCode, "../test/matmul/adaptor.cu");
+    system("cd ../build && make matmul && ../bin/matmul");
+  }
+}
 
 void test_flash_attention() {
   /* 1. Demo */
@@ -134,7 +135,9 @@ void test_flash_attention() {
   auto module = generator.optimize(graph);
   generator.dump(module);
   auto&& sourceCode = generator.codegen(module);
-  generator.save(sourceCode, "../test/flash-attn/demo.cu");
+  llvm::outs() << "==============";
+  llvm::outs() << sourceCode ;
+  generator.save(sourceCode, "/home/pangyunfei/xushilong/KernelCodeGen/bin/demo.cu");
   // std::string adaptorCode = "";
   // adaptorCode += "#include \"matmulKernel.cu\"\n";
   // adaptorCode += "const int M = " + std::to_string(m) + ";\n";
