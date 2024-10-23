@@ -5,7 +5,7 @@ set(CMAKE_CUDA_COMPILER /usr/local/cuda-11.1/bin/nvcc)
 
 # set to debug mode
 # set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 
 # project config
 ###################################################################
@@ -44,7 +44,7 @@ else()
   set(MLIR_GENERATED_INCLUDE_DIR ${LLVM_BINARY_DIR}/tools/mlir/include)
   set(MLIR_INCLUDE_DIRS "${MLIR_INCLUDE_DIR};${MLIR_GENERATED_INCLUDE_DIR}")
 endif()
-
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(KernelCodeGen_SOURCE_DIR ${PROJECT_SOURCE_DIR})
 set(KernelCodeGen_BINARY_DIR ${PROJECT_BINARY_DIR})
 include_directories(${LLVM_INCLUDE_DIRS})
@@ -55,7 +55,7 @@ include_directories(${KernelCodeGen_SOURCE_DIR}/build/include)
 
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
-
+add_compile_options(-g)
 
 
 # optional config

@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include "KernelCodeGen.h"
+#include <fstream>
 using namespace KernelCodeGen;
 
 
@@ -56,7 +57,7 @@ void test_matmul() {
   auto graph = generator.createGraph("matmul_demo");
   generator.setLogMode(Log::Debug);
 
-  int m = 4096, n = 2048, k = 1024;
+  int m = 1024, n = 1024, k = 1024;
   auto A = graph.create<PlaceHolder>(std::vector<int64_t>{m, k}, std::string{"float32"});
   auto B = graph.create<PlaceHolder>(std::vector<int64_t>{k, n}, std::string{"float32"});
   auto C = graph.create<Matmul>(A, B);
@@ -65,17 +66,27 @@ void test_matmul() {
   graph.dump();
   auto module = generator.optimize(graph);
   generator.dump(module);
-  auto&& sourceCode = generator.codegen(module);
-  generator.save(sourceCode, "../test/matmul/matmulKernel.cu");
+  const std::string& sourceCode = generator.codegen(module);
+  std::fstream s("/home/pangyunfei/xushilong/KernelCodeGen/genData/src.cu",std::ios_base::app);
+  if(s.is_open()){
+    s << sourceCode << std::endl;
+    llvm::outs() << "write file OK";
+    s.close();
+  }
+  else{
+    llvm::outs() << "write file error";
+  }
+  
+  generator.save(sourceCode, "/home/pangyunfei/xushilong/KernelCodeGen/genData/matmulKernel.cu");
   std::string adaptorCode = "";
   adaptorCode += "#include \"matmulKernel.cu\"\n";
   adaptorCode += "const int M = " + std::to_string(m) + ";\n";
   adaptorCode += "const int N = " + std::to_string(n) + ";\n";
   adaptorCode += "const int K = " + std::to_string(k) + ";\n";
   adaptorCode += "#define kernelFunc matmul_demo::kernel0\n";
-  generator.save(adaptorCode, "../test/matmul/adaptor.cu");
-  system("cd ../build && make matmul && ../bin/matmul");
-
+  generator.save(adaptorCode, "/home/pangyunfei/xushilong/KernelCodeGen/genData/adaptor.cu");
+  // system("cd ../build && make matmul && ../bin/matmul");
+#if 0
   /* 2. Batch perf test.*/
   std::vector<int64_t> dims {256, 512, 768, 1024, 1536, 2048, 3072, 4096, 5120, 6144, 7168, 8192, 9216, 10240, 11264, 12288, 13312, 14336, 15360, 16384};
   for (auto dim : dims) {
@@ -103,6 +114,7 @@ void test_matmul() {
     generator.save(adaptorCode, "../test/matmul/adaptor.cu");
     system("cd ../build && make matmul && ../bin/matmul");
   }
+#endif
 }
 
 void test_flash_attention() {
@@ -152,8 +164,8 @@ void test_flash_attention() {
 
 int main(int argc, char* argv[]) {
 
-  // test_matmul();
-  test_operators();
+  test_matmul();
+  // test_operators();
   // test_flash_attention();
 
 }
