@@ -42,7 +42,7 @@ struct CompareValue {
 };
 
 struct CompareKernel {
-  int operator()(const mlir::AffineParallelOp& x, const mlir::AffineParallelOp& y) const {
+  int operator()(const mlir::affine::AffineParallelOp& x, const mlir::affine::AffineParallelOp& y) const {
     mlir::Operation* x_ptr = x;
     mlir::Operation* y_ptr = y;
     auto x_hashCode = reinterpret_cast<size_t>(x_ptr);
@@ -56,7 +56,7 @@ std::stringstream source;
 
 std::map<mlir::Value, std::string, CompareValue> valueNameMap;
 
-std::map<mlir::AffineParallelOp, std::string, CompareKernel> kernelNameMap;
+std::map<mlir::affine::AffineParallelOp, std::string, CompareKernel> kernelNameMap;
 
 std::string getKernelName() {
   return std::string("kernel") + std::to_string(kernelCounter++);
@@ -105,14 +105,14 @@ public:
 
 private:
 // mlir::arith::ConstantIndexOp, mlir::arith::MulFOp, mlir::arith::AddFOp, mlir::memref::AllocOp,
-// mlir::AffineApplyOp, mlir::AffineIfOp, mlir::AffineForOp, mlir::AffineLoadOp, mlir::AffineStoreOp,
-// mlir::AffineVectorLoadOp, mlir::AffineVectorStoreOp, mlir::gpu::BarrierOp
+// mlir::affine::AffineApplyOp, mlir::affine::AffineIfOp, mlir::affine::AffineForOp, mlir::affine::AffineLoadOp, mlir::affine::AffineStoreOp,
+// mlir::affine::AffineVectorLoadOp, mlir::affine::AffineVectorStoreOp, mlir::gpu::BarrierOp
   void codegen(mlir::arith::ConstantIndexOp);
   void codegen(mlir::arith::ConstantFloatOp);
   void codegen(mlir::arith::ConstantIntOp);
   void codegen(mlir::arith::MulFOp);
   void codegen(mlir::arith::AddFOp);
-  void codegen(mlir::arith::MaxFOp);
+  void codegen(mlir::arith::MaxNumFOp);
   void codegen(mlir::arith::SubFOp);
   void codegen(mlir::arith::DivFOp);
   void codegen(mlir::math::PowFOp);
@@ -123,17 +123,17 @@ private:
   void codegen(mlir::arith::BitcastOp);
   void codegen(mlir::math::ExpOp);
   void codegen(mlir::memref::AllocOp);
-  void codegen(mlir::AffineApplyOp);
-  void codegen(mlir::AffineIfOp);
-  void codegen(mlir::AffineForOp);
-  void codegen(mlir::AffineLoadOp);
+  void codegen(mlir::affine::AffineApplyOp);
+  void codegen(mlir::affine::AffineIfOp);
+  void codegen(mlir::affine::AffineForOp);
+  void codegen(mlir::affine::AffineLoadOp);
   void codegen(mlir::memref::LoadOp);
-  void codegen(mlir::AffineStoreOp);
-  void codegen(mlir::AffineVectorLoadOp);
-  void codegen(mlir::AffineVectorStoreOp);
+  void codegen(mlir::affine::AffineStoreOp);
+  void codegen(mlir::affine::AffineVectorLoadOp);
+  void codegen(mlir::affine::AffineVectorStoreOp);
   void codegen(mlir::gpu::BarrierOp);
   void codegen(mlir::gpu::ShuffleOp);
-  void codegen(mlir::AffineParallelOp);
+  void codegen(mlir::affine::AffineParallelOp);
   void codegen(mlir::func::FuncOp);
   void codegen(mlir::AffineMap, const llvm::SmallVector<mlir::Value>&);
   std::string codegen(mlir::AffineExpr, const llvm::SmallVector<mlir::Value>&);
@@ -187,14 +187,14 @@ void varDeclear(mlir::Value var) {
 /// @brief collect value and its name to valueNameMap
 /// @param node 
 /// @return return the operands not defined in the `node`'s scope.
-std::vector<mlir::Value> collectVars(mlir::AffineParallelOp node) {
+std::vector<mlir::Value> collectVars(mlir::affine::AffineParallelOp node) {
 
   std::vector<std::string> int3str {"x", "y", "z"};
   int id = 0;
   std::map<mlir::Value, int, CompareValue> outsidesVars;
 
   //parallel index
-  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::AffineParallelOp parallelOp) {
+  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::affine::AffineParallelOp parallelOp) {
     auto operands = parallelOp.getIVs();
     std::string prefix {""};
     if (parallelOp == node) {
@@ -209,13 +209,13 @@ std::vector<mlir::Value> collectVars(mlir::AffineParallelOp node) {
 
   // induction var of loops
   int iterVarCounter = 0;
-  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::AffineForOp forOp) {
+  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::affine::AffineForOp forOp) {
     auto iterVar = forOp.getInductionVar();
     setValueName(iterVar, "iter" + std::to_string(iterVarCounter++));
   });
 
   int applyCounter = 0;
-  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::AffineApplyOp applyOp) {
+  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::affine::AffineApplyOp applyOp) {
     auto results = applyOp->getResults();
     for (int i = 0; i < results.size(); i += 1) {
       setValueName(results[i], "expr" + std::to_string(applyCounter++));
@@ -229,7 +229,7 @@ std::vector<mlir::Value> collectVars(mlir::AffineParallelOp node) {
   });  // 这里就把所有在pal定义的shared mem，或者reg记录到了valueNameMap中，所以在下面的检查中不会发现那些在pal内部定义的memroy
 
   int vectorLoadCounter = 0;
-  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::AffineVectorLoadOp vecLoadOp) {
+  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::affine::AffineVectorLoadOp vecLoadOp) {
     auto mem = vecLoadOp.getMemref();
     if (valueNameMap.count(mem) == 0) {
       if (outsidesVars.count(mem) == 0) {
@@ -244,7 +244,7 @@ std::vector<mlir::Value> collectVars(mlir::AffineParallelOp node) {
   });
 
   int regLoadCounter = 0;
-  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::AffineLoadOp loadOp) {
+  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::affine::AffineLoadOp loadOp) {
     auto mem = loadOp.getMemref();
     if (valueNameMap.count(mem) == 0) {
       if (outsidesVars.count(mem) == 0) {
@@ -272,7 +272,7 @@ std::vector<mlir::Value> collectVars(mlir::AffineParallelOp node) {
     }
   });
 
-  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::AffineStoreOp storeOp) {
+  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::affine::AffineStoreOp storeOp) {
     auto mem = storeOp.getMemref();
     if (valueNameMap.count(mem) == 0) {
       if (outsidesVars.count(mem) == 0) {
@@ -282,7 +282,7 @@ std::vector<mlir::Value> collectVars(mlir::AffineParallelOp node) {
     }
   });
 
-  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::AffineVectorStoreOp storeOp) {
+  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::affine::AffineVectorStoreOp storeOp) {
     auto mem = storeOp.getMemref();
     if (valueNameMap.count(mem) == 0) {
       if (outsidesVars.count(mem) == 0) {
@@ -317,7 +317,7 @@ std::vector<mlir::Value> collectVars(mlir::AffineParallelOp node) {
     setValueName(result, "temp" + std::to_string(tempCounter++));
   });
 
-  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::arith::MaxFOp maxOp) {
+  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::arith::MaxNumFOp maxOp) {
     auto result = maxOp.getResult();
     setValueName(result, "temp" + std::to_string(tempCounter++));
   });
@@ -397,7 +397,7 @@ void CUDAGenerator::codegen(mlir::gpu::BarrierOp) {
 void CUDAGenerator::codegen(mlir::gpu::ShuffleOp shflOp) {
   indent();
   source << "auto " << getValueName(shflOp.getResult(0)) << " = ";
-  switch (shflOp.mode()) {
+  switch (shflOp.getMode()) {
     case mlir::gpu::ShuffleMode::DOWN: {
       source << " __shfl_down_sync(0xffffffff, ";
       break;
@@ -408,8 +408,8 @@ void CUDAGenerator::codegen(mlir::gpu::ShuffleOp shflOp) {
     }
     default: llvm::errs() << "Unsupport shfl mode\n";
   }
-  source << getValueName(shflOp.value()) << ", " << getValueName(shflOp.offset())
-         << ", " << getValueName(shflOp.width()) << ");\n";
+  source << getValueName(shflOp.getValue()) << ", " << getValueName(shflOp.getOffset())
+         << ", " << getValueName(shflOp.getWidth()) << ");\n";
 }
 
 std::string CUDAGenerator::codegen(mlir::AffineExpr expr, const llvm::SmallVector<mlir::Value>& operands) {
@@ -439,7 +439,7 @@ std::string CUDAGenerator::codegen(mlir::AffineExpr expr, const llvm::SmallVecto
 }
 void CUDAGenerator::codegen(mlir::AffineMap map, const llvm::SmallVector<mlir::Value>& operands) {}
 
-void CUDAGenerator::codegen(mlir::AffineApplyOp applyOp) {
+void CUDAGenerator::codegen(mlir::affine::AffineApplyOp applyOp) {
   auto map = applyOp.getAffineMap();
   auto operands = applyOp.getMapOperands();
   auto exprs = map.getResults();
@@ -488,7 +488,7 @@ void CUDAGenerator::codegen(mlir::arith::AddFOp addOp) {
                << getValueName(addOp.getRhs()) << ";\n";
 }
 
-void CUDAGenerator::codegen(mlir::arith::MaxFOp maxOp) {
+void CUDAGenerator::codegen(mlir::arith::MaxNumFOp maxOp) {
   indent();
   source << "auto " << getValueName(maxOp.getResult()) << " = max("
                << getValueName(maxOp.getLhs()) << " , "
@@ -570,7 +570,7 @@ void CUDAGenerator::codegen(mlir::math::ExpOp expOp) {
                << getValueName(expOp.getOperand()) << ");\n";
 }
 
-void CUDAGenerator::codegen(mlir::AffineIfOp ifOp) {
+void CUDAGenerator::codegen(mlir::affine::AffineIfOp ifOp) {
   auto iset = ifOp.getIntegerSet();
   int numConstraints = iset.getNumConstraints();
   auto operands = ifOp.getOperands();
@@ -587,9 +587,9 @@ void CUDAGenerator::codegen(mlir::AffineIfOp ifOp) {
     INDENT();
     auto& ops = ifOp.getBody()->getOperations();
     for (auto& op : ops) {
-      if (auto forOp = mlir::dyn_cast<mlir::AffineForOp>(&op)) {
+      if (auto forOp = mlir::dyn_cast<mlir::affine::AffineForOp>(&op)) {
         this->codegen(forOp);
-      } else if (auto ifOp = mlir::dyn_cast<mlir::AffineIfOp>(&op)) {
+      } else if (auto ifOp = mlir::dyn_cast<mlir::affine::AffineIfOp>(&op)) {
         this->codegen(ifOp);
       } else if (auto constOp = mlir::dyn_cast<mlir::arith::ConstantIndexOp>(&op)) {
         this->codegen(constOp);
@@ -597,19 +597,19 @@ void CUDAGenerator::codegen(mlir::AffineIfOp ifOp) {
         this->codegen(constOp);
       } else if (auto intOp = mlir::dyn_cast<mlir::arith::ConstantIntOp>(&op)) {
         this->codegen(intOp);
-      } else if (auto vecLoad = mlir::dyn_cast<mlir::AffineVectorLoadOp>(&op)) {
+      } else if (auto vecLoad = mlir::dyn_cast<mlir::affine::AffineVectorLoadOp>(&op)) {
         this->codegen(vecLoad);
-      } else if (auto vecStore = mlir::dyn_cast<mlir::AffineVectorStoreOp>(&op)) {
+      } else if (auto vecStore = mlir::dyn_cast<mlir::affine::AffineVectorStoreOp>(&op)) {
         this->codegen(vecStore);
       } else if (auto barrierOp = mlir::dyn_cast<mlir::gpu::BarrierOp>(&op)) {
         this->codegen(barrierOp);
-      } else if (auto storeOp = mlir::dyn_cast<mlir::AffineStoreOp>(&op)) {
+      } else if (auto storeOp = mlir::dyn_cast<mlir::affine::AffineStoreOp>(&op)) {
         this->codegen(storeOp);
-      } else if (auto loadOp = mlir::dyn_cast<mlir::AffineLoadOp>(&op)) {
+      } else if (auto loadOp = mlir::dyn_cast<mlir::affine::AffineLoadOp>(&op)) {
         this->codegen(loadOp);
       } else if (auto memLoadOp = mlir::dyn_cast<mlir::memref::LoadOp>(&op)) {
         this->codegen(memLoadOp);
-      } else if (auto maxOp = mlir::dyn_cast<mlir::arith::MaxFOp>(&op)) {
+      } else if (auto maxOp = mlir::dyn_cast<mlir::arith::MaxNumFOp>(&op)) {
         this->codegen(maxOp);
       } else if (auto mulOp = mlir::dyn_cast<mlir::arith::MulFOp>(&op)) {
         this->codegen(mulOp);
@@ -628,7 +628,7 @@ void CUDAGenerator::codegen(mlir::AffineIfOp ifOp) {
       } else if (auto shflOp = mlir::dyn_cast<mlir::gpu::ShuffleOp>(&op)) {
         this->codegen(shflOp);
       } else {
-        auto yieldOp = mlir::dyn_cast<mlir::AffineYieldOp>(&op);
+        auto yieldOp = mlir::dyn_cast<mlir::affine::AffineYieldOp>(&op);
         assert(yieldOp);
       }
     }
@@ -637,7 +637,7 @@ void CUDAGenerator::codegen(mlir::AffineIfOp ifOp) {
   source << "}\n";
 }
 
-void CUDAGenerator::codegen(mlir::AffineLoadOp loadOp) {
+void CUDAGenerator::codegen(mlir::affine::AffineLoadOp loadOp) {
   indent();
   source << "auto " << getValueName(loadOp.getResult()) << " = " 
                << getValueName(loadOp.getMemref());
@@ -717,7 +717,7 @@ void CUDAGenerator::codegen(mlir::memref::LoadOp loadOp) {
   source << ";\n";
 }
 
-void CUDAGenerator::codegen(mlir::AffineStoreOp storeOp) {
+void CUDAGenerator::codegen(mlir::affine::AffineStoreOp storeOp) {
   indent();
   source << getValueName(storeOp.getMemref());
   auto map = storeOp.getAffineMap();
@@ -776,11 +776,11 @@ std::string getVectorFetchType(mlir::VectorType vt) {
   return "float" + std::to_string(totalFloat);
 }
 
-void CUDAGenerator::codegen(mlir::AffineVectorLoadOp loadOp) {
+void CUDAGenerator::codegen(mlir::affine::AffineVectorLoadOp loadOp) {
   indent();
   source << "auto " << getValueName(loadOp.getResult()) << " = ";
 
-  auto codegenMemref = [&](mlir::AffineVectorLoadOp loadOp) -> std::string {
+  auto codegenMemref = [&](mlir::affine::AffineVectorLoadOp loadOp) -> std::string {
     auto result = getValueName(loadOp.getMemref());
     auto map = loadOp.getAffineMap();
     auto operands = loadOp.getMapOperands();
@@ -823,9 +823,9 @@ void CUDAGenerator::codegen(mlir::AffineVectorLoadOp loadOp) {
 
 }
 
-void CUDAGenerator::codegen(mlir::AffineVectorStoreOp storeOp) {
+void CUDAGenerator::codegen(mlir::affine::AffineVectorStoreOp storeOp) {
 
-  auto codegenMemref = [&](mlir::AffineVectorStoreOp storeOp) -> std::string {
+  auto codegenMemref = [&](mlir::affine::AffineVectorStoreOp storeOp) -> std::string {
     auto result = getValueName(storeOp.getMemref());
     auto map = storeOp.getAffineMap();
     auto operands = storeOp.getMapOperands();
@@ -868,7 +868,7 @@ void CUDAGenerator::codegen(mlir::AffineVectorStoreOp storeOp) {
   source << " = " << getValueName(storeOp.getValue()) << ";\n";
 }
 
-void CUDAGenerator::codegen(mlir::AffineForOp forOp) {
+void CUDAGenerator::codegen(mlir::affine::AffineForOp forOp) {
   
   auto lb = forOp.getConstantLowerBound();
   auto ub = forOp.getConstantUpperBound();
@@ -888,26 +888,26 @@ void CUDAGenerator::codegen(mlir::AffineForOp forOp) {
   indent();
   source << "for (int " << iter << " = " << lb << "; "
                << iter << " < " << ub << "; "
-               << iter << " += " << step << ") {\n";
+               << iter << " += " << step.getLimitedValue() << ") {\n";
   {
     INDENT();
     auto& ops = forOp.getBody()->getOperations();
     for (auto& op : ops) {
-      if (auto forOp = mlir::dyn_cast<mlir::AffineForOp>(&op)) {
+      if (auto forOp = mlir::dyn_cast<mlir::affine::AffineForOp>(&op)) {
         this->codegen(forOp);
-      } else if (auto ifOp = mlir::dyn_cast<mlir::AffineIfOp>(&op)) {
+      } else if (auto ifOp = mlir::dyn_cast<mlir::affine::AffineIfOp>(&op)) {
         this->codegen(ifOp);
-      } else if (auto loadOp = mlir::dyn_cast<mlir::AffineLoadOp>(&op)) {
+      } else if (auto loadOp = mlir::dyn_cast<mlir::affine::AffineLoadOp>(&op)) {
         this->codegen(loadOp);
-      } else if (auto applyOp = mlir::dyn_cast<mlir::AffineApplyOp>(&op)) {
+      } else if (auto applyOp = mlir::dyn_cast<mlir::affine::AffineApplyOp>(&op)) {
         this->codegen(applyOp);
       } else if (auto memLoadOp = mlir::dyn_cast<mlir::memref::LoadOp>(&op)) {
         this->codegen(memLoadOp);
-      } else if (auto storeOp = mlir::dyn_cast<mlir::AffineStoreOp>(&op)) {
+      } else if (auto storeOp = mlir::dyn_cast<mlir::affine::AffineStoreOp>(&op)) {
         this->codegen(storeOp);
-      } else if (auto vecLoad = mlir::dyn_cast<mlir::AffineVectorLoadOp>(&op)) {
+      } else if (auto vecLoad = mlir::dyn_cast<mlir::affine::AffineVectorLoadOp>(&op)) {
         this->codegen(vecLoad);
-      } else if (auto vecStore = mlir::dyn_cast<mlir::AffineVectorStoreOp>(&op)) {
+      } else if (auto vecStore = mlir::dyn_cast<mlir::affine::AffineVectorStoreOp>(&op)) {
         this->codegen(vecStore);
       } else if (auto constOp = mlir::dyn_cast<mlir::arith::ConstantIndexOp>(&op)) {
         this->codegen(constOp);
@@ -937,7 +937,7 @@ void CUDAGenerator::codegen(mlir::AffineForOp forOp) {
         this->codegen(shflOp);
       } else if (auto allocOp = mlir::dyn_cast<mlir::memref::AllocOp>(&op)) {
         this->codegen(allocOp);
-      } else if (auto maxOp = mlir::dyn_cast<mlir::arith::MaxFOp>(&op)) {
+      } else if (auto maxOp = mlir::dyn_cast<mlir::arith::MaxNumFOp>(&op)) {
         this->codegen(maxOp);
       } else if (auto subOp = mlir::dyn_cast<mlir::arith::SubFOp>(&op)) {
         this->codegen(subOp);
@@ -945,7 +945,7 @@ void CUDAGenerator::codegen(mlir::AffineForOp forOp) {
         this->codegen(expOp);
       } else if (auto castOp = mlir::dyn_cast<mlir::arith::BitcastOp>(&op)) {
         this->codegen(castOp);
-      } else if (auto parallelOp = mlir::dyn_cast<mlir::AffineParallelOp>(&op)) {
+      } else if (auto parallelOp = mlir::dyn_cast<mlir::affine::AffineParallelOp>(&op)) {
         auto& innerOps = parallelOp.getBody()->getOperations();
         for (auto& innerOp : innerOps) {
           if (auto constOp = mlir::dyn_cast<mlir::arith::ConstantIndexOp>(&innerOp)) {
@@ -954,21 +954,21 @@ void CUDAGenerator::codegen(mlir::AffineForOp forOp) {
             this->codegen(intOp);
           } else if (auto allocOp = mlir::dyn_cast<mlir::memref::AllocOp>(&innerOp)) {
             this->codegen(allocOp);
-          } else if (auto applyOp = mlir::dyn_cast<mlir::AffineApplyOp>(&innerOp)) {
+          } else if (auto applyOp = mlir::dyn_cast<mlir::affine::AffineApplyOp>(&innerOp)) {
             this->codegen(applyOp); 
-          } else if (auto forOp = mlir::dyn_cast<mlir::AffineForOp>(&innerOp)) {
+          } else if (auto forOp = mlir::dyn_cast<mlir::affine::AffineForOp>(&innerOp)) {
             this->codegen(forOp);
-          } else if (auto ifOp = mlir::dyn_cast<mlir::AffineIfOp>(&innerOp)) {
+          } else if (auto ifOp = mlir::dyn_cast<mlir::affine::AffineIfOp>(&innerOp)) {
             this->codegen(ifOp);
-          } else if (auto loadOp = mlir::dyn_cast<mlir::AffineLoadOp>(&innerOp)) {
+          } else if (auto loadOp = mlir::dyn_cast<mlir::affine::AffineLoadOp>(&innerOp)) {
             this->codegen(loadOp);
           } else if (auto memLoadOp = mlir::dyn_cast<mlir::memref::LoadOp>(&innerOp)) {
             this->codegen(memLoadOp);
-          } else if (auto storeOp = mlir::dyn_cast<mlir::AffineStoreOp>(&innerOp)) {
+          } else if (auto storeOp = mlir::dyn_cast<mlir::affine::AffineStoreOp>(&innerOp)) {
             this->codegen(storeOp);
-          } else if (auto vecLoad = mlir::dyn_cast<mlir::AffineVectorLoadOp>(&innerOp)) {
+          } else if (auto vecLoad = mlir::dyn_cast<mlir::affine::AffineVectorLoadOp>(&innerOp)) {
             this->codegen(vecLoad);
-          } else if (auto vecStore = mlir::dyn_cast<mlir::AffineVectorStoreOp>(&innerOp)) {
+          } else if (auto vecStore = mlir::dyn_cast<mlir::affine::AffineVectorStoreOp>(&innerOp)) {
             this->codegen(vecStore);
           } else if (auto constOp = mlir::dyn_cast<mlir::arith::ConstantFloatOp>(&innerOp)) {
             this->codegen(constOp);
@@ -995,7 +995,7 @@ void CUDAGenerator::codegen(mlir::AffineForOp forOp) {
           } else if (auto barrierOp = mlir::dyn_cast<mlir::gpu::BarrierOp>(&innerOp)) {
             this->codegen(barrierOp);
           } else {
-            auto yieldOp = mlir::dyn_cast<mlir::AffineYieldOp>(&innerOp);
+            auto yieldOp = mlir::dyn_cast<mlir::affine::AffineYieldOp>(&innerOp);
             if (!yieldOp) {
               llvm::errs() << innerOp.getName() << "\n";
               assert(yieldOp);
@@ -1003,7 +1003,7 @@ void CUDAGenerator::codegen(mlir::AffineForOp forOp) {
           }
         }
       } else {
-        auto yieldOp = mlir::dyn_cast<mlir::AffineYieldOp>(&op);
+        auto yieldOp = mlir::dyn_cast<mlir::affine::AffineYieldOp>(&op);
         if (!yieldOp) {
           llvm::errs() << op.getName() << "\n";
           assert(yieldOp);
@@ -1016,7 +1016,7 @@ void CUDAGenerator::codegen(mlir::AffineForOp forOp) {
 }
 
 /// Print a function, first the prototype and then the body.
-void CUDAGenerator::codegen(mlir::AffineParallelOp node) {
+void CUDAGenerator::codegen(mlir::affine::AffineParallelOp node) {
 
   auto&& outsideVars = collectVars(node);
   assert(outsideVars.size() != 0);
@@ -1024,7 +1024,7 @@ void CUDAGenerator::codegen(mlir::AffineParallelOp node) {
   int64_t totalNumber;
   std::vector<int64_t> gridDims = Analyzer::getParallelNumber(node, totalNumber);
   std::vector<int64_t> blockDims;
-  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::AffineParallelOp parallelOp) {
+  node.walk<mlir::WalkOrder::PreOrder>([&](mlir::affine::AffineParallelOp parallelOp) {
     blockDims = Analyzer::getParallelNumber(parallelOp, totalNumber);
   });
   // Annotation
@@ -1073,15 +1073,15 @@ void CUDAGenerator::codegen(mlir::AffineParallelOp node) {
         this->codegen(constOp);
       } else if (auto intOp = mlir::dyn_cast<mlir::arith::ConstantIntOp>(&op)) {
         this->codegen(intOp);
-      } else if (auto storeOp = mlir::dyn_cast<mlir::AffineStoreOp>(&op)) {
+      } else if (auto storeOp = mlir::dyn_cast<mlir::affine::AffineStoreOp>(&op)) {
         this->codegen(storeOp);
       } else if (auto constOp = mlir::dyn_cast<mlir::arith::ConstantFloatOp>(&op)) {
         this->codegen(constOp);
-      } else if (auto applyOp = mlir::dyn_cast<mlir::AffineApplyOp>(&op)) {
+      } else if (auto applyOp = mlir::dyn_cast<mlir::affine::AffineApplyOp>(&op)) {
         this->codegen(applyOp); 
-      } else if (auto forOp = mlir::dyn_cast<mlir::AffineForOp>(&op)) {
+      } else if (auto forOp = mlir::dyn_cast<mlir::affine::AffineForOp>(&op)) {
         this->codegen(forOp); 
-      } else if (auto parallelOp = mlir::dyn_cast<mlir::AffineParallelOp>(&op)) {
+      } else if (auto parallelOp = mlir::dyn_cast<mlir::affine::AffineParallelOp>(&op)) {
         auto& innerOps = parallelOp.getBody()->getOperations();
         for (auto& innerOp : innerOps) {
           if (auto constOp = mlir::dyn_cast<mlir::arith::ConstantIndexOp>(&innerOp)) {
@@ -1090,21 +1090,21 @@ void CUDAGenerator::codegen(mlir::AffineParallelOp node) {
             this->codegen(intOp);
           } else if (auto allocOp = mlir::dyn_cast<mlir::memref::AllocOp>(&innerOp)) {
             this->codegen(allocOp);
-          } else if (auto applyOp = mlir::dyn_cast<mlir::AffineApplyOp>(&innerOp)) {
+          } else if (auto applyOp = mlir::dyn_cast<mlir::affine::AffineApplyOp>(&innerOp)) {
             this->codegen(applyOp); 
-          } else if (auto forOp = mlir::dyn_cast<mlir::AffineForOp>(&innerOp)) {
+          } else if (auto forOp = mlir::dyn_cast<mlir::affine::AffineForOp>(&innerOp)) {
             this->codegen(forOp);
-          } else if (auto ifOp = mlir::dyn_cast<mlir::AffineIfOp>(&innerOp)) {
+          } else if (auto ifOp = mlir::dyn_cast<mlir::affine::AffineIfOp>(&innerOp)) {
             this->codegen(ifOp);
-          } else if (auto loadOp = mlir::dyn_cast<mlir::AffineLoadOp>(&innerOp)) {
+          } else if (auto loadOp = mlir::dyn_cast<mlir::affine::AffineLoadOp>(&innerOp)) {
             this->codegen(loadOp);
           } else if (auto memLoadOp = mlir::dyn_cast<mlir::memref::LoadOp>(&innerOp)) {
             this->codegen(memLoadOp);
-          } else if (auto storeOp = mlir::dyn_cast<mlir::AffineStoreOp>(&innerOp)) {
+          } else if (auto storeOp = mlir::dyn_cast<mlir::affine::AffineStoreOp>(&innerOp)) {
             this->codegen(storeOp);
-          } else if (auto vecLoad = mlir::dyn_cast<mlir::AffineVectorLoadOp>(&innerOp)) {
+          } else if (auto vecLoad = mlir::dyn_cast<mlir::affine::AffineVectorLoadOp>(&innerOp)) {
             this->codegen(vecLoad);
-          } else if (auto vecStore = mlir::dyn_cast<mlir::AffineVectorStoreOp>(&innerOp)) {
+          } else if (auto vecStore = mlir::dyn_cast<mlir::affine::AffineVectorStoreOp>(&innerOp)) {
             this->codegen(vecStore);
           } else if (auto constOp = mlir::dyn_cast<mlir::arith::ConstantFloatOp>(&innerOp)) {
             this->codegen(constOp);
@@ -1131,7 +1131,7 @@ void CUDAGenerator::codegen(mlir::AffineParallelOp node) {
           } else if (auto barrierOp = mlir::dyn_cast<mlir::gpu::BarrierOp>(&innerOp)) {
             this->codegen(barrierOp);
           } else {
-            auto yieldOp = mlir::dyn_cast<mlir::AffineYieldOp>(&innerOp);
+            auto yieldOp = mlir::dyn_cast<mlir::affine::AffineYieldOp>(&innerOp);
             if (!yieldOp) {
               llvm::errs() << innerOp.getName() << "\n";
               assert(yieldOp);
@@ -1139,7 +1139,7 @@ void CUDAGenerator::codegen(mlir::AffineParallelOp node) {
           }
         }
       } else {
-        auto yieldOp = mlir::dyn_cast<mlir::AffineYieldOp>(&op);
+        auto yieldOp = mlir::dyn_cast<mlir::affine::AffineYieldOp>(&op);
         assert(yieldOp);
       }
     }
@@ -1151,7 +1151,7 @@ void CUDAGenerator::codegen(mlir::AffineParallelOp node) {
 void CUDAGenerator::codegen(mlir::func::FuncOp funcOp) {
   auto& kernels = funcOp.getBody().front().getOperations();
   for (auto& kernel : kernels) {
-    if (auto parallelOp = mlir::dyn_cast<mlir::AffineParallelOp>(kernel)) {
+    if (auto parallelOp = mlir::dyn_cast<mlir::affine::AffineParallelOp>(kernel)) {
       this->codegen(parallelOp);
     }
   }

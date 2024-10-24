@@ -41,7 +41,7 @@ struct MatmulOptimizer : Optimizer {
     this->name = std::move(std::string("Matmul"));
   }
 
-  // bool isMatmulPattern(mlir::AffineForOp forOp);
+  // bool isMatmulPattern(mlir::affine::AffineForOp forOp);
 
   virtual bool applicable(mlir::ModuleOp& module) override;
   virtual void applyOptimzer(mlir::ModuleOp& module, mlir::OpBuilder& builder) override;
@@ -55,13 +55,13 @@ struct MatmulOptimizer : Optimizer {
   }
 
   // using the outermost loop represent a matmul.
-  // std::set<mlir::AffineForOp, CompareLoop> matmuls;
+  // std::set<mlir::affine::AffineForOp, CompareLoop> matmuls;
   std::set<mlir::func::FuncOp, CompareFunc> matmuls;
 
 
   // Map: from outermost loop to all loops in the matmul(loopM->[loopM, loopN, loopK]).
-  // std::map<mlir::AffineForOp, std::vector<mlir::AffineForOp>, CompareLoop> matmulLoops;
-  std::map<mlir::func::FuncOp, std::vector<mlir::AffineForOp>, CompareFunc> matmulLoops;
+  // std::map<mlir::affine::AffineForOp, std::vector<mlir::affine::AffineForOp>, CompareLoop> matmulLoops;
+  std::map<mlir::func::FuncOp, std::vector<mlir::affine::AffineForOp>, CompareFunc> matmulLoops;
 
 
   // Memory: A, B, C
@@ -73,7 +73,7 @@ struct MatmulOptimizer : Optimizer {
   };
 
   // loopM->[A, B, C]
-  // std::map<mlir::AffineForOp, MemoryBuffer, CompareLoop> matmulBuffers;
+  // std::map<mlir::affine::AffineForOp, MemoryBuffer, CompareLoop> matmulBuffers;
   std::map<mlir::func::FuncOp, MemoryBuffer, CompareFunc> matmulBuffers;
 
   static std::map<std::string, int> matmulConfig;
@@ -121,7 +121,7 @@ struct BinaryOptimizer : Optimizer {
 
   std::map<mlir::func::FuncOp, MemoryBuffer, CompareFunc> binaryBuffers;
   std::set<mlir::func::FuncOp, CompareFunc> binarys;
-  std::map<mlir::func::FuncOp, std::vector<mlir::AffineForOp>, CompareFunc> binaryLoops;
+  std::map<mlir::func::FuncOp, std::vector<mlir::affine::AffineForOp>, CompareFunc> binaryLoops;
   static std::map<std::string, int> binaryConfig;
 };
 
@@ -145,7 +145,7 @@ struct ElementWiseOptimizer : Optimizer {
 
   std::map<mlir::func::FuncOp, MemoryBuffer, CompareFunc> elementWiseBuffers;
   std::set<mlir::func::FuncOp, CompareFunc> elementWises;
-  std::map<mlir::func::FuncOp, std::vector<mlir::AffineForOp>, CompareFunc> elementWiseLoops;
+  std::map<mlir::func::FuncOp, std::vector<mlir::affine::AffineForOp>, CompareFunc> elementWiseLoops;
   static std::map<std::string, int> elementWiseConfig;
 };
 
@@ -156,12 +156,12 @@ struct LayerNormOptimizer : Optimizer {
   virtual bool applicable(mlir::ModuleOp& module) override;
   virtual void applyOptimzer(mlir::ModuleOp& module, mlir::OpBuilder& builder) override;
   mlir::AffineMap getAffineMap(const std::string& mapIdentifier, mlir::OpBuilder& builder, const std::vector<int64_t> &extras={});
-  mlir::AffineParallelOp combineParallel(std::vector<mlir::AffineParallelOp> pals);
-  mlir::AffineForOp write(mlir::AffineForOp forOp, std::vector<mlir::Value> buffers);
-  mlir::AffineForOp extractOpsFromLoop(mlir::AffineForOp forOp, std::vector<mlir::Value> buffers);
-  std::vector<mlir::AffineForOp> read(mlir::AffineForOp forOp, std::vector<mlir::Value> buffers);
-  std::vector<mlir::Operation*> reduceUnrollOptimize(mlir::AffineForOp forOp, mlir::AffineParallelOp pal);
-  void elementWiseUnrollOptimize(mlir::AffineForOp forOp, mlir::AffineParallelOp pal);
+  mlir::affine::AffineParallelOp combineParallel(std::vector<mlir::affine::AffineParallelOp> pals);
+  mlir::affine::AffineForOp write(mlir::affine::AffineForOp forOp, std::vector<mlir::Value> buffers);
+  mlir::affine::AffineForOp extractOpsFromLoop(mlir::affine::AffineForOp forOp, std::vector<mlir::Value> buffers);
+  std::vector<mlir::affine::AffineForOp> read(mlir::affine::AffineForOp forOp, std::vector<mlir::Value> buffers);
+  std::vector<mlir::Operation*> reduceUnrollOptimize(mlir::affine::AffineForOp forOp, mlir::affine::AffineParallelOp pal);
+  void elementWiseUnrollOptimize(mlir::affine::AffineForOp forOp, mlir::affine::AffineParallelOp pal);
 
   void clear() {
     layerNormBuffers.clear();
@@ -178,7 +178,7 @@ struct LayerNormOptimizer : Optimizer {
 
   std::map<mlir::func::FuncOp, MemoryBuffer, CompareFunc> layerNormBuffers;
   std::set<mlir::func::FuncOp, CompareFunc> layerNorms;
-  std::map<mlir::func::FuncOp, std::vector<std::vector<mlir::AffineForOp>>, CompareFunc> layerNormLoops;
+  std::map<mlir::func::FuncOp, std::vector<std::vector<mlir::affine::AffineForOp>>, CompareFunc> layerNormLoops;
   static std::map<std::string, int> layerNormConfig;
 };
 
@@ -189,7 +189,7 @@ struct GatherOptimizer : Optimizer {
   virtual bool applicable(mlir::ModuleOp& module) override;
   virtual void applyOptimzer(mlir::ModuleOp& module, mlir::OpBuilder& builder) override;
   mlir::AffineMap getAffineMap(const std::string& mapIdentifier, mlir::OpBuilder& builder, const std::vector<int64_t> &extras={});
-  void oneIndexLoad(mlir::AffineForOp forOp, mlir::AffineParallelOp pal);
+  void oneIndexLoad(mlir::affine::AffineForOp forOp, mlir::affine::AffineParallelOp pal);
 
   void clear() {
     gatherBuffers.clear();
@@ -205,7 +205,7 @@ struct GatherOptimizer : Optimizer {
 
   std::map<mlir::func::FuncOp, MemoryBuffer, CompareFunc> gatherBuffers;
   std::set<mlir::func::FuncOp, CompareFunc> gathers;
-  std::map<mlir::func::FuncOp, std::vector<mlir::AffineForOp>, CompareFunc> gatherLoops;
+  std::map<mlir::func::FuncOp, std::vector<mlir::affine::AffineForOp>, CompareFunc> gatherLoops;
   static std::map<std::string, int> gatherConfig;
 };
 
@@ -264,7 +264,7 @@ struct BatchMatmulOptimizer : Optimizer {
   // mlir::AffineMap getAffineMap(const std::string& mapIdentifier, mlir::OpBuilder& builder, const int64_t batchNum=0);
   mlir::AffineMap getAffineMap(const std::string& mapIdentifier, mlir::OpBuilder& builder);
 
-  std::vector<mlir::Value> threadLevelOneToTwo(mlir::AffineParallelOp pal);
+  std::vector<mlir::Value> threadLevelOneToTwo(mlir::affine::AffineParallelOp pal);
   void clear() {
     batchMatmulBuffers.clear();
     batchMatmuls.clear();
@@ -280,7 +280,7 @@ struct BatchMatmulOptimizer : Optimizer {
 
   std::map<mlir::func::FuncOp, MemoryBuffer, CompareFunc> batchMatmulBuffers;
   std::set<mlir::func::FuncOp, CompareFunc> batchMatmuls;
-  std::map<mlir::func::FuncOp, std::vector<mlir::AffineForOp>, CompareFunc> batchMatmulLoops;
+  std::map<mlir::func::FuncOp, std::vector<mlir::affine::AffineForOp>, CompareFunc> batchMatmulLoops;
   static std::map<std::string, int> batchMatmulConfig;
   
 };

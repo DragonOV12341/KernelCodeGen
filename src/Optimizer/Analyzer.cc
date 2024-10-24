@@ -11,11 +11,11 @@ struct ConstPassGuard {
 struct CollectOutermostLoop : 
   public mlir::PassWrapper<CollectOutermostLoop, mlir::OperationPass<mlir::ModuleOp>> {
    MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(CollectOutermostLoop)
-   CollectOutermostLoop(ConstPassGuard* passGuard_, std::vector<mlir::AffineForOp>& res_) : 
+   CollectOutermostLoop(ConstPassGuard* passGuard_, std::vector<mlir::affine::AffineForOp>& res_) : 
         passGuard(passGuard_), outermostForOps(res_) {}
    void runOnOperation() override;
    ConstPassGuard* passGuard;
-   std::vector<mlir::AffineForOp>& outermostForOps;
+   std::vector<mlir::affine::AffineForOp>& outermostForOps;
 };
 
 void CollectOutermostLoop::runOnOperation() {
@@ -24,7 +24,7 @@ void CollectOutermostLoop::runOnOperation() {
   if (passGuard->visited()) return;
   passGuard->visit();
 
-  module.walk<mlir::WalkOrder::PreOrder>([&](mlir::AffineForOp forOp) {
+  module.walk<mlir::WalkOrder::PreOrder>([&](mlir::affine::AffineForOp forOp) {
     if (forOp->getParentOp() == module) {
       outermostForOps.push_back(forOp);
     }
@@ -33,7 +33,7 @@ void CollectOutermostLoop::runOnOperation() {
 
 
 std::unique_ptr<mlir::OperationPass<mlir::ModuleOp>> collectOutermostLoopPass(
-  ConstPassGuard* passGuard, std::vector<mlir::AffineForOp>& res) {
+  ConstPassGuard* passGuard, std::vector<mlir::affine::AffineForOp>& res) {
    return std::make_unique<CollectOutermostLoop>(passGuard, res);
 }
 
@@ -48,10 +48,10 @@ int Analyzer::getUsersNumber(mlir::Value::user_range users) {
 }
 
 
-std::vector<mlir::AffineForOp> Analyzer::collectOutermostLoop(mlir::ModuleOp& module) {
+std::vector<mlir::affine::AffineForOp> Analyzer::collectOutermostLoop(mlir::ModuleOp& module) {
   ConstPassGuard constPassGuard;
   mlir::PassManager pm(module.getContext());
-  std::vector<mlir::AffineForOp> res;
+  std::vector<mlir::affine::AffineForOp> res;
   pm.addPass(collectOutermostLoopPass(&constPassGuard, res));
   if (failed(pm.run(module))) {
     llvm::errs() << "Collects outermost loop failed.\n";
@@ -90,9 +90,9 @@ mlir::func::FuncOp Analyzer::getTargetFunction(mlir::ModuleOp& module, const std
   return res;
 }
 
-std::vector<mlir::AffineForOp> Analyzer::collectFuncLoops(mlir::func::FuncOp funcOp) {
-  std::vector<mlir::AffineForOp> res;
-  funcOp.walk<mlir::WalkOrder::PreOrder>([&](mlir::AffineForOp forOp) {
+std::vector<mlir::affine::AffineForOp> Analyzer::collectFuncLoops(mlir::func::FuncOp funcOp) {
+  std::vector<mlir::affine::AffineForOp> res;
+  funcOp.walk<mlir::WalkOrder::PreOrder>([&](mlir::affine::AffineForOp forOp) {
     res.push_back(forOp);
   });
   return std::move(res);

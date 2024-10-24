@@ -17,7 +17,8 @@ set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard to conform to")
 
 message(STATUS "LLVM_BUILD_LIBRARY_DIR ${LLVM_BUILD_LIBRARY_DIR}")
-set(LLVM_BUILD_LIBRARY_DIR /home/pangyunfei/xushilong/KernelCodeGen/llvm-project/build/lib)
+# set(LLVM_BUILD_LIBRARY_DIR /home/pangyunfei/xushilong/KernelCodeGen/llvm-project/build/lib)
+set(LLVM_BUILD_LIBRARY_DIR ~/llvm-install/lib)
 message(STATUS "LLVM_BUILD_LIBRARY_DIR ${LLVM_BUILD_LIBRARY_DIR}")
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)

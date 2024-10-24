@@ -13,7 +13,7 @@ namespace KernelCodeGen {
 struct Rewriter {
   Rewriter() = default;
 
-  static mlir::OpBuilder getBuilder(mlir::AffineForOp op, Position pos) {
+  static mlir::OpBuilder getBuilder(mlir::affine::AffineForOp op, Position pos) {
     switch (pos) {
       case Position::after: {
         mlir::OpBuilder builder(op->getContext());
@@ -35,7 +35,7 @@ struct Rewriter {
     } 
   }
 
-  static std::vector<mlir::Value> getParallelIdx(mlir::AffineParallelOp parallelLevel) {
+  static std::vector<mlir::Value> getParallelIdx(mlir::affine::AffineParallelOp parallelLevel) {
     auto dim = parallelLevel.getNumDims();
     std::vector<mlir::Value> idxes;
     auto ivs = parallelLevel.getIVs();
@@ -45,13 +45,13 @@ struct Rewriter {
     return idxes;
   }
 
-  static std::vector<mlir::Value> getElementIdx(mlir::AffineParallelOp parallelLevel) {
+  static std::vector<mlir::Value> getElementIdx(mlir::affine::AffineParallelOp parallelLevel) {
     std::vector<mlir::Value> idxes;
     auto ivs = parallelLevel.getIVs();
     for (auto iv : ivs) {
       auto users = iv.getUsers();
       for (auto user : users) {
-        if (auto mapOp = mlir::dyn_cast<mlir::AffineApplyOp>(user)) {
+        if (auto mapOp = mlir::dyn_cast<mlir::affine::AffineApplyOp>(user)) {
           idxes.push_back(mapOp.getResult());
           break;
         }
@@ -65,22 +65,22 @@ struct Rewriter {
   /// @param num_output 
   /// @param factors 
   /// @return 
-  static std::vector<mlir::AffineForOp> split(mlir::AffineForOp forOp, 
+  static std::vector<mlir::affine::AffineForOp> split(mlir::affine::AffineForOp forOp, 
                                               uint64_t num_output, std::vector<int64_t>&& factors);
   
   /// @brief 
   /// @param loops 
   /// @return 
-  static mlir::Value bufferizeLoopCarryVar(std::vector<mlir::AffineForOp>& loops);
+  static mlir::Value bufferizeLoopCarryVar(std::vector<mlir::affine::AffineForOp>& loops);
 
   /// @brief 
   /// @param forOp 
-  static void reorder(const std::vector<mlir::AffineForOp>& forOp);
+  static void reorder(const std::vector<mlir::affine::AffineForOp>& forOp);
 
   /// @brief 
   /// @param forOp 
   /// @return 
-  static mlir::AffineParallelOp parallel(const std::vector<mlir::AffineForOp>& forOp);
+  static mlir::affine::AffineParallelOp parallel(const std::vector<mlir::affine::AffineForOp>& forOp);
 
   /// @brief 
   /// @param parallelLevel 
@@ -132,11 +132,11 @@ struct Rewriter {
   /// @param compute_at 
   /// @param pos 
   /// @return 
-  static mlir::AffineForOp read(mlir::Value src, mlir::Value dst, mlir::AffineMap map, 
+  static mlir::affine::AffineForOp read(mlir::Value src, mlir::Value dst, mlir::AffineMap map, 
                                    llvm::SmallVector<mlir::Value> operands, int64_t width,
-                                   mlir::AffineForOp compute_at, Position pos);
+                                   mlir::affine::AffineForOp compute_at, Position pos);
 
-  static mlir::AffineForOp read(mlir::OpBuilder& builder, mlir::Value src, mlir::Value dst, 
+  static mlir::affine::AffineForOp read(mlir::OpBuilder& builder, mlir::Value src, mlir::Value dst, 
     mlir::AffineMap map, llvm::SmallVector<mlir::Value> operands, int64_t width);
 
   /// @brief 
@@ -148,24 +148,24 @@ struct Rewriter {
   /// @param compute_at 
   /// @param pos 
   /// @return 
-  static mlir::AffineForOp write(mlir::Value src, mlir::Value dst, mlir::AffineMap map, 
+  static mlir::affine::AffineForOp write(mlir::Value src, mlir::Value dst, mlir::AffineMap map, 
                                    llvm::SmallVector<mlir::Value> operands, int64_t width,
-                                   mlir::AffineForOp compute_at, Position pos);
+                                   mlir::affine::AffineForOp compute_at, Position pos);
 
-  static mlir::AffineForOp write(mlir::OpBuilder& builder, mlir::Value src, mlir::Value dst, 
+  static mlir::affine::AffineForOp write(mlir::OpBuilder& builder, mlir::Value src, mlir::Value dst, 
     mlir::AffineMap map, llvm::SmallVector<mlir::Value> operands, int64_t width);
 
   /// @brief 
   /// @param compute_at 
   /// @param pos 
   /// @return 
-  static mlir::gpu::BarrierOp barrier(mlir::AffineForOp compute_at, Position pos);
+  static mlir::gpu::BarrierOp barrier(mlir::affine::AffineForOp compute_at, Position pos);
 
   /// @brief 
   /// @param readOrWrite 
   /// @param width 
   /// @return 
-  static mlir::AffineForOp vectorize(mlir::AffineForOp readOrWrite, int64_t width);
+  static mlir::affine::AffineForOp vectorize(mlir::affine::AffineForOp readOrWrite, int64_t width);
 
   /// @brief 
   /// @param scope 
@@ -173,7 +173,7 @@ struct Rewriter {
   /// @param cached 
   /// @param map 
   /// @param operands 
-  static void cache_read(mlir::AffineForOp scope, mlir::Value src, mlir::Value cached, mlir::AffineMap map, llvm::SmallVector<mlir::Value> operands);
+  static void cache_read(mlir::affine::AffineForOp scope, mlir::Value src, mlir::Value cached, mlir::AffineMap map, llvm::SmallVector<mlir::Value> operands);
 
   /// @brief 
   /// @param scope 
@@ -181,13 +181,13 @@ struct Rewriter {
   /// @param cached 
   /// @param map 
   /// @param operands 
-  static void cache_write(mlir::AffineForOp scope, mlir::Value src, mlir::Value cached, mlir::AffineMap map, llvm::SmallVector<mlir::Value> operands);
+  static void cache_write(mlir::affine::AffineForOp scope, mlir::Value src, mlir::Value cached, mlir::AffineMap map, llvm::SmallVector<mlir::Value> operands);
 
   /// @brief 
   /// @param parallelLevel 
   /// @param dst 
   /// @return 
-  static std::vector<std::vector<mlir::AffineForOp>> get_write(mlir::AffineParallelOp parallelLevel, mlir::Value dst);
+  static std::vector<std::vector<mlir::affine::AffineForOp>> get_write(mlir::affine::AffineParallelOp parallelLevel, mlir::Value dst);
 
 
   /// @brief double buffer for `buffer`, and pipeline for `readBody`. all of them are computead at `compute_at`
@@ -195,12 +195,12 @@ struct Rewriter {
   /// @param buffer 
   /// @param compute_at 
   /// @return
-  static std::vector<std::vector<mlir::AffineForOp>> pipeline(std::vector<mlir::AffineForOp> readBodys, mlir::Value& buffer, mlir::AffineForOp compute_at);
+  static std::vector<std::vector<mlir::affine::AffineForOp>> pipeline(std::vector<mlir::affine::AffineForOp> readBodys, mlir::Value& buffer, mlir::affine::AffineForOp compute_at);
 
-  static void change_double_buffer(mlir::AffineForOp, mlir::Value buffer);
+  static void change_double_buffer(mlir::affine::AffineForOp, mlir::Value buffer);
 
   /// @brief 
-  static void detach_last_loop(mlir::AffineForOp forOp);
+  static void detach_last_loop(mlir::affine::AffineForOp forOp);
 
   /// @brief 
   /// @param srcOp 
@@ -213,7 +213,7 @@ struct Rewriter {
   /// @param srcOp 
   /// @param dstOp 
   /// @param pos 
-  static void extract_loop(mlir::Operation* srcOp, mlir::AffineForOp forOp, int64_t iteration);
+  static void extract_loop(mlir::Operation* srcOp, mlir::affine::AffineForOp forOp, int64_t iteration);
 
   /// @brief 
   /// @param op 
@@ -225,11 +225,11 @@ struct Rewriter {
 
   /// @brief 
   /// @param forOp 
-  static void unroll(mlir::ModuleOp module, mlir::function_ref<bool(mlir::AffineForOp)> unrollCheckFn);
+  static void unroll(mlir::ModuleOp module, mlir::function_ref<bool(mlir::affine::AffineForOp)> unrollCheckFn);
 
   /// @brief 
   /// @param forOp 
-  static void unrollAttribute(mlir::ModuleOp module, mlir::function_ref<bool(mlir::AffineForOp)> unrollCheckFn);
+  static void unrollAttribute(mlir::ModuleOp module, mlir::function_ref<bool(mlir::affine::AffineForOp)> unrollCheckFn);
 
   /// @brief 
   /// @param module 
@@ -237,40 +237,40 @@ struct Rewriter {
 
   static void set_buffer(mlir::OpBuilder& builder, mlir::Value mem, mlir::Value targetValue);
 
-  static mlir::AffineForOp create_constant_loop(mlir::OpBuilder& builder, int64_t lowerBound, int64_t upperBound, int64_t step);
+  static mlir::affine::AffineForOp create_constant_loop(mlir::OpBuilder& builder, int64_t lowerBound, int64_t upperBound, int64_t step);
 
-  static mlir::AffineForOp outer_product(mlir::OpBuilder& builder, mlir::Value tileC, 
+  static mlir::affine::AffineForOp outer_product(mlir::OpBuilder& builder, mlir::Value tileC, 
     mlir::Value fragA, mlir::Value fragB, int64_t m, int64_t n);
 
   /*----------------------------------------------------------------*/
   
-  static std::vector<mlir::AffineForOp> combineToTowDim(std::vector<mlir::AffineForOp> loops);
+  static std::vector<mlir::affine::AffineForOp> combineToTowDim(std::vector<mlir::affine::AffineForOp> loops);
 
 
-  static mlir::AffineForOp read(mlir::Value src, mlir::Value dst, mlir::AffineMap map, 
-                                  llvm::SmallVector<mlir::Value> operands, mlir::AffineForOp compute_at, Position pos);
+  static mlir::affine::AffineForOp read(mlir::Value src, mlir::Value dst, mlir::AffineMap map, 
+                                  llvm::SmallVector<mlir::Value> operands, mlir::affine::AffineForOp compute_at, Position pos);
 
 
-  static mlir::AffineForOp write(mlir::Value src, mlir::Value dst, mlir::AffineMap map, 
-                                  llvm::SmallVector<mlir::Value> operands, mlir::AffineForOp compute_at, Position pos);
+  static mlir::affine::AffineForOp write(mlir::Value src, mlir::Value dst, mlir::AffineMap map, 
+                                  llvm::SmallVector<mlir::Value> operands, mlir::affine::AffineForOp compute_at, Position pos);
 
-  static mlir::AffineIfOp irregularMat(mlir::AffineForOp forOp, std::vector<int> range, llvm::SmallVector<mlir::Value> operands);
+  static mlir::affine::AffineIfOp irregularMat(mlir::affine::AffineForOp forOp, std::vector<int> range, llvm::SmallVector<mlir::Value> operands);
 
-  static mlir::AffineForOp combineToOneDim(std::vector<mlir::AffineForOp> loops);
+  static mlir::affine::AffineForOp combineToOneDim(std::vector<mlir::affine::AffineForOp> loops);
 
-  static mlir::Value bufferizeLoopCarryVar(mlir::AffineForOp &loop, mlir::Block* buildBlock);
+  static mlir::Value bufferizeLoopCarryVar(mlir::affine::AffineForOp &loop, mlir::Block* buildBlock);
 
-  static void swapLoops(std::vector<std::vector<mlir::AffineForOp>> loops);
+  static void swapLoops(std::vector<std::vector<mlir::affine::AffineForOp>> loops);
 
   static void bufferizeOpResult(mlir::Operation* resultOp, mlir::Value buffer);
   
-  static void scheduleOpGridToBlock(mlir::AffineParallelOp gridLevel, mlir::AffineParallelOp blockLevel);
+  static void scheduleOpGridToBlock(mlir::affine::AffineParallelOp gridLevel, mlir::affine::AffineParallelOp blockLevel);
   
-  static void deleteExtraCstOp(mlir::AffineParallelOp blockLevel);
+  static void deleteExtraCstOp(mlir::affine::AffineParallelOp blockLevel);
 
-  static mlir::AffineForOp modifyLoopStepToOne(mlir::AffineForOp forOp);
+  static mlir::affine::AffineForOp modifyLoopStepToOne(mlir::affine::AffineForOp forOp);
 
-  static std::vector<mlir::Value> blockLevelOneToTwo(mlir::AffineParallelOp pal, int64_t oneDimLen);
+  static std::vector<mlir::Value> blockLevelOneToTwo(mlir::affine::AffineParallelOp pal, int64_t oneDimLen);
 
 };
 

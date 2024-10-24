@@ -28,15 +28,15 @@ std::string toStr(mlir::Type type) {
   return nullptr;
 }
 
-mlir::AffineForOp buildAffineLoopNest_(mlir::OpBuilder &builder, mlir::Location loc, llvm::ArrayRef<int64_t> lbs, llvm::ArrayRef<int64_t> ubs, 
+mlir::affine::AffineForOp buildAffineLoopNest_(mlir::OpBuilder &builder, mlir::Location loc, llvm::ArrayRef<int64_t> lbs, llvm::ArrayRef<int64_t> ubs, 
                                         llvm::ArrayRef<int64_t> steps, mlir::ValueRange iterArgs, loopfunc bodyBuilderFn) {
 
   assert(lbs.size() == ubs.size() && "Mismatch in number of arguments");
   assert(lbs.size() == steps.size() && "Mismatch in number of arguments");
   mlir::OpBuilder::InsertionGuard guard(builder);
 
-  mlir::AffineForOp main_loop;
-  mlir::AffineForOp out_loop = nullptr;
+  mlir::affine::AffineForOp main_loop;
+  mlir::affine::AffineForOp out_loop = nullptr;
   llvm::SmallVector<mlir::Value, 4> ivs;
   ivs.reserve(lbs.size());
   for (unsigned i = 0, e = lbs.size(); i < e; ++i) {
@@ -45,20 +45,20 @@ mlir::AffineForOp buildAffineLoopNest_(mlir::OpBuilder &builder, mlir::Location 
       if (i == e - 1 && bodyBuilderFn) {
         mlir::OpBuilder::InsertionGuard nestedGuard(builder_);
         auto result = bodyBuilderFn(builder_, loc_, ivs, iterArgs_);
-        builder_.create<mlir::AffineYieldOp>(loc_, result);
+        builder_.create<mlir::affine::AffineYieldOp>(loc_, result);
       } else {
-        builder_.create<mlir::AffineYieldOp>(loc_, iterArgs);
+        builder_.create<mlir::affine::AffineYieldOp>(loc_, iterArgs);
       }
     };
-    mlir::AffineForOp loop;
+    mlir::affine::AffineForOp loop;
     if (!out_loop) {
-      loop = builder.create<mlir::AffineForOp>(loc, lbs[i], ubs[i], steps[i], iterArgs, loopBody);
+      loop = builder.create<mlir::affine::AffineForOp>(loc, lbs[i], ubs[i], steps[i], iterArgs, loopBody);
       main_loop = loop;
     } else {
-      loop = builder.create<mlir::AffineForOp>(loc, lbs[i], ubs[i], steps[i], out_loop.getRegionIterArgs()[0], loopBody);
+      loop = builder.create<mlir::affine::AffineForOp>(loc, lbs[i], ubs[i], steps[i], out_loop.getRegionIterArgs()[0], loopBody);
       out_loop.getBody()->back().erase();
       builder.setInsertionPointToEnd(out_loop.getBody());
-      builder.create<mlir::AffineYieldOp>(loc, loop.getResult(0));
+      builder.create<mlir::affine::AffineYieldOp>(loc, loop.getResult(0));
     }
     out_loop = loop;
     builder.setInsertionPointToStart(loop.getBody());
@@ -186,7 +186,7 @@ mlir::Value Matmul::build(ComputeDAG* graph, mlir::Value A, mlir::Value B/*, Mem
   mlir::SmallVector<int64_t, 3> lowerBounds(2, /*Value=*/0);
   mlir::SmallVector<int64_t, 3> steps(2, /*Value=*/1);
   mlir::SmallVector<int64_t, 3> upperBounds({m, n});
-  mlir::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
+  mlir::affine::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
     [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc, mlir::ValueRange ivs) {
       auto i = ivs[0];
       auto j = ivs[1];
@@ -199,15 +199,15 @@ mlir::Value Matmul::build(ComputeDAG* graph, mlir::Value A, mlir::Value B/*, Mem
       auto kLoopBody = [&](mlir::OpBuilder &builder, mlir::Location nestedLoc, mlir::Value iv, mlir::ValueRange iterArgs) {
         mlir::OpBuilder::InsertionGuard nestedGuard(builder);
         auto k = iv;
-        auto ld_a = builder.create<mlir::AffineLoadOp>(builder.getUnknownLoc(), /*A*/operands[0], mlir::ValueRange({i, k}));
-        auto ld_b = builder.create<mlir::AffineLoadOp>(builder.getUnknownLoc(), /*B*/operands[1], mlir::ValueRange({k, j}));
+        auto ld_a = builder.create<mlir::affine::AffineLoadOp>(builder.getUnknownLoc(), /*A*/operands[0], mlir::ValueRange({i, k}));
+        auto ld_b = builder.create<mlir::affine::AffineLoadOp>(builder.getUnknownLoc(), /*B*/operands[1], mlir::ValueRange({k, j}));
         auto mul = builder.create<mlir::arith::MulFOp>(builder.getUnknownLoc(), ld_a, ld_b);
         auto add = builder.create<mlir::arith::AddFOp>(builder.getUnknownLoc(), mul, iterArgs[0]);
-        builder.create<mlir::AffineYieldOp>(builder.getUnknownLoc(), add.getResult());
+        builder.create<mlir::affine::AffineYieldOp>(builder.getUnknownLoc(), add.getResult());
       };
-      auto Cij = nestedBuilder.create<mlir::AffineForOp>(nestedBuilder.getUnknownLoc(), 0, k1, 1, mlir::ValueRange({zero.getResult()}), kLoopBody);
+      auto Cij = nestedBuilder.create<mlir::affine::AffineForOp>(nestedBuilder.getUnknownLoc(), 0, k1, 1, mlir::ValueRange({zero.getResult()}), kLoopBody);
 
-      nestedBuilder.create<mlir::AffineStoreOp>(nestedBuilder.getUnknownLoc(), Cij.getResult(0), /*C*/output, mlir::ValueRange({i, j}));
+      nestedBuilder.create<mlir::affine::AffineStoreOp>(nestedBuilder.getUnknownLoc(), Cij.getResult(0), /*C*/output, mlir::ValueRange({i, j}));
     }
   );
   builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(), output);
@@ -268,7 +268,7 @@ mlir::Value Relu::build(ComputeDAG* graph, mlir::Value input, MemorySpace ms, co
   mlir::SmallVector<int64_t, 8> lowerBounds(shape.size(), /*Value=*/0);
   mlir::SmallVector<int64_t, 8> steps(shape.size(), /*Value=*/1);
   mlir::SmallVector<int64_t, 8> upperBounds(shape.begin(), shape.end());
-  mlir::buildAffineLoopNest(
+  mlir::affine::buildAffineLoopNest(
     builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
     [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc, mlir::ValueRange ivs) {
 
@@ -276,9 +276,9 @@ mlir::Value Relu::build(ComputeDAG* graph, mlir::Value input, MemorySpace ms, co
       auto dtypeOutput = getDType(nestedBuilder, dtype);
       auto zero = nestedBuilder.create<mlir::arith::ConstantOp>(nestedBuilder.getUnknownLoc(), 
           nestedBuilder.getFloatAttr(dtypeOutput, 0));
-      auto ld_element = nestedBuilder.create<mlir::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], ivs);
-      auto max = nestedBuilder.create<mlir::arith::MaxFOp>(nestedBuilder.getUnknownLoc(), zero, ld_element);
-      nestedBuilder.create<mlir::AffineStoreOp>(nestedBuilder.getUnknownLoc(), max, output, ivs);
+      auto ld_element = nestedBuilder.create<mlir::affine::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], ivs);
+      auto max = nestedBuilder.create<mlir::arith::MaxNumFOp>(nestedBuilder.getUnknownLoc(), zero, ld_element);
+      nestedBuilder.create<mlir::affine::AffineStoreOp>(nestedBuilder.getUnknownLoc(), max, output, ivs);
     }
   );
   builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(), output);
@@ -390,7 +390,7 @@ mlir::Value BatchedMatmul::build(ComputeDAG* graph, mlir::Value A, Layout layout
   mlir::SmallVector<int64_t, 8> lowerBounds(totalDims, /*Value=*/0);
   mlir::SmallVector<int64_t, 8> steps(totalDims, /*Value=*/1);
   mlir::SmallVector<int64_t, 8> upperBounds(shapeC.begin(), shapeC.end());
-  mlir::buildAffineLoopNest(
+  mlir::affine::buildAffineLoopNest(
     builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
     [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc, mlir::ValueRange ivs) {
       auto i = ivs[totalDims - 2];
@@ -434,18 +434,18 @@ mlir::Value BatchedMatmul::build(ComputeDAG* graph, mlir::Value A, Layout layout
           indexB.push_back(j); indexB.push_back(k);
         }
 
-        auto ld_a = builder.create<mlir::AffineLoadOp>(
+        auto ld_a = builder.create<mlir::affine::AffineLoadOp>(
                       builder.getUnknownLoc(), operands[0], mlir::ValueRange(llvm::ArrayRef<mlir::Value>(indexA)));
-        auto ld_b = builder.create<mlir::AffineLoadOp>(
+        auto ld_b = builder.create<mlir::affine::AffineLoadOp>(
                       builder.getUnknownLoc(), operands[1], mlir::ValueRange(llvm::ArrayRef<mlir::Value>(indexB)));
         auto mul = builder.create<mlir::arith::MulFOp>(builder.getUnknownLoc(), ld_a, ld_b);
         auto add = builder.create<mlir::arith::AddFOp>(builder.getUnknownLoc(), mul, iterArgs[0]);
-        builder.create<mlir::AffineYieldOp>(builder.getUnknownLoc(), add.getResult());
+        builder.create<mlir::affine::AffineYieldOp>(builder.getUnknownLoc(), add.getResult());
       };
-      auto Cij = nestedBuilder.create<mlir::AffineForOp>(nestedBuilder.getUnknownLoc(), 
+      auto Cij = nestedBuilder.create<mlir::affine::AffineForOp>(nestedBuilder.getUnknownLoc(), 
         0, k1, 1, /*iterArgs=lvm::None*/ mlir::ValueRange({zero.getResult()}), kLoopBody);
 
-      nestedBuilder.create<mlir::AffineStoreOp>(nestedBuilder.getUnknownLoc(), 
+      nestedBuilder.create<mlir::affine::AffineStoreOp>(nestedBuilder.getUnknownLoc(), 
           Cij.getResult(0), operands[2], mlir::ValueRange(llvm::ArrayRef<mlir::Value>(indexC)));
     }
   );
@@ -507,7 +507,7 @@ mlir::Value Softmax::build(ComputeDAG* graph, mlir::Value input, int axis, Memor
   mlir::SmallVector<int64_t, 8> lowerBounds(reduceStartAxis, /*Value=*/0);
   mlir::SmallVector<int64_t, 8> steps(reduceStartAxis, /*Value=*/1);
   mlir::SmallVector<int64_t, 8> upperBounds(shape.begin(), shape.begin() + reduceStartAxis);
-  mlir::buildAffineLoopNest(
+  mlir::affine::buildAffineLoopNest(
     builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
     [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc, mlir::ValueRange ivs) {
 
@@ -542,13 +542,13 @@ mlir::Value Softmax::build(ComputeDAG* graph, mlir::Value input, int axis, Memor
         mlir::OpBuilder::InsertionGuard kGuard(kBuilder);
         auto k = iv;
         index.push_back(k);
-        auto ld = kBuilder.create<mlir::AffineLoadOp>(
+        auto ld = kBuilder.create<mlir::affine::AffineLoadOp>(
                       kBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(llvm::ArrayRef<mlir::Value>(index)));
         auto exp = kBuilder.create<mlir::math::ExpOp>(kBuilder.getUnknownLoc(), ld.getResult());
         auto add = kBuilder.create<mlir::arith::AddFOp>(kBuilder.getUnknownLoc(), exp.getResult(), iterArgs[0]);
-        builder.create<mlir::AffineYieldOp>(builder.getUnknownLoc(), add.getResult());
+        builder.create<mlir::affine::AffineYieldOp>(builder.getUnknownLoc(), add.getResult());
       };
-      auto sum = nestedBuilder.create<mlir::AffineForOp>(nestedBuilder.getUnknownLoc(), 
+      auto sum = nestedBuilder.create<mlir::affine::AffineForOp>(nestedBuilder.getUnknownLoc(), 
         0, shape.back(), 1, /*iterArgs=lvm::None*/ mlir::ValueRange({zero.getResult()}), kLoopBody);
 
       // Elementwise.
@@ -557,16 +557,16 @@ mlir::Value Softmax::build(ComputeDAG* graph, mlir::Value input, int axis, Memor
         mlir::OpBuilder::InsertionGuard kGuard(ewBuilder);
         auto ew = iv;
         index.back() = ew;
-        auto ld = ewBuilder.create<mlir::AffineLoadOp>(
+        auto ld = ewBuilder.create<mlir::affine::AffineLoadOp>(
                       ewBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(llvm::ArrayRef<mlir::Value>(index)));
         auto exp = ewBuilder.create<mlir::math::ExpOp>(ewBuilder.getUnknownLoc(), ld.getResult());
         auto div = ewBuilder.create<mlir::arith::DivFOp>(ewBuilder.getUnknownLoc(), exp.getResult(), sum.getResult(0));
         
-        ewBuilder.create<mlir::AffineStoreOp>(ewBuilder.getUnknownLoc(), 
+        ewBuilder.create<mlir::affine::AffineStoreOp>(ewBuilder.getUnknownLoc(), 
             div.getResult(), operands[0], mlir::ValueRange(llvm::ArrayRef<mlir::Value>(index)));
-        ewBuilder.create<mlir::AffineYieldOp>(ewBuilder.getUnknownLoc());
+        ewBuilder.create<mlir::affine::AffineYieldOp>(ewBuilder.getUnknownLoc());
       };
-      nestedBuilder.create<mlir::AffineForOp>(nestedBuilder.getUnknownLoc(), 
+      nestedBuilder.create<mlir::affine::AffineForOp>(nestedBuilder.getUnknownLoc(), 
         0, shape.back(), 1, /*iterArgs=lvm::None*/ mlir::ValueRange({}), ewLoopBody);
     }
   );
@@ -742,7 +742,7 @@ std::map<std::string, std::function<mlir::Value(mlir::OpBuilder&, mlir::Value, m
 //   mlir::SmallVector<int64_t> lowerBounds(max_dim, /*Value=*/0);
 //   mlir::SmallVector<int64_t> steps(max_dim, /*Value=*/1);
 //   mlir::SmallVector<int64_t> upperBounds(max_shape.begin(), max_shape.end());
-//   mlir::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
+//   mlir::affine::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
 //     [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc, mlir::ValueRange ivs) {
 //       mlir::SmallVector<mlir::Value> min_ivs;
 //       if (oneDimIndexs.size()) {
@@ -756,10 +756,10 @@ std::map<std::string, std::function<mlir::Value(mlir::OpBuilder&, mlir::Value, m
 //       } else {
 //         min_ivs = mlir::SmallVector<mlir::Value>(ivs.take_back(min_dim));
 //       }
-//       auto ld_max = nestedBuilder.create<mlir::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(ivs));
-//       auto ld_min = nestedBuilder.create<mlir::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[1], mlir::ValueRange(min_ivs));
+//       auto ld_max = nestedBuilder.create<mlir::affine::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(ivs));
+//       auto ld_min = nestedBuilder.create<mlir::affine::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[1], mlir::ValueRange(min_ivs));
 //       auto result = operationMap[operation](nestedBuilder, ld_max, ld_min);
-//       nestedBuilder.create<mlir::AffineStoreOp>(nestedBuilder.getUnknownLoc(), result, output, mlir::ValueRange(ivs));
+//       nestedBuilder.create<mlir::affine::AffineStoreOp>(nestedBuilder.getUnknownLoc(), result, output, mlir::ValueRange(ivs));
 //     }
 //   );
 //   builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(), output);
@@ -856,7 +856,7 @@ mlir::Value Binary::build(ComputeDAG* graph, mlir::Value A, mlir::Value B, std::
   mlir::SmallVector<int64_t> lowerBounds(maxDim, /*Value=*/0);
   mlir::SmallVector<int64_t> steps(maxDim, /*Value=*/1);
   mlir::SmallVector<int64_t> upperBounds(newShape.begin(), newShape.end());
-  mlir::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
+  mlir::affine::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
     [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc, mlir::ValueRange ivs) {
       mlir::SmallVector<mlir::Value> tempIvs(ivs.begin(), ivs.end());
       mlir::SmallVector<mlir::Value> aIvs, bIvs;
@@ -875,10 +875,10 @@ mlir::Value Binary::build(ComputeDAG* graph, mlir::Value A, mlir::Value B, std::
       }
       std::reverse(aIvs.begin(), aIvs.end());
       std::reverse(bIvs.begin(), bIvs.end());
-      auto ld_a = nestedBuilder.create<mlir::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(aIvs));
-      auto ld_b = nestedBuilder.create<mlir::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[1], mlir::ValueRange(bIvs));
+      auto ld_a = nestedBuilder.create<mlir::affine::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(aIvs));
+      auto ld_b = nestedBuilder.create<mlir::affine::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[1], mlir::ValueRange(bIvs));
       auto result = operationMap[operation](nestedBuilder, ld_a, ld_b);
-      nestedBuilder.create<mlir::AffineStoreOp>(nestedBuilder.getUnknownLoc(), result, output, mlir::ValueRange(ivs));
+      nestedBuilder.create<mlir::affine::AffineStoreOp>(nestedBuilder.getUnknownLoc(), result, output, mlir::ValueRange(ivs));
     }
   );
   builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(), output);
@@ -941,12 +941,12 @@ mlir::Value Binary::build(ComputeDAG* graph, mlir::Value A, mlir::Value B, std::
 //   mlir::SmallVector<int64_t> lowerBounds(input_shape.size(), /*Value=*/0);
 //   mlir::SmallVector<int64_t> steps(input_shape.size(), /*Value=*/1);
 //   mlir::SmallVector<int64_t> upperBounds(input_shape.begin(), input_shape.end());
-//   mlir::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
+//   mlir::affine::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
 //     [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc, mlir::ValueRange ivs) {
-//       auto ld_max = nestedBuilder.create<mlir::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(ivs));
+//       auto ld_max = nestedBuilder.create<mlir::affine::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(ivs));
 //       auto num = nestedBuilder.create<mlir::arith::ConstantOp>(nestedBuilder.getUnknownLoc(), nestedBuilder.getFloatAttr(getDType(nestedBuilder, dtype), B));
 //       auto result = operationMap[operation](nestedBuilder, ld_max, num);
-//       nestedBuilder.create<mlir::AffineStoreOp>(nestedBuilder.getUnknownLoc(), result, output, mlir::ValueRange(ivs));
+//       nestedBuilder.create<mlir::affine::AffineStoreOp>(nestedBuilder.getUnknownLoc(), result, output, mlir::ValueRange(ivs));
 //     }
 //   );
 //   builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(), output);
@@ -971,7 +971,7 @@ mlir::Value ElementWise::log(mlir::OpBuilder &builder, mlir::Value elem, mlir::T
 
 mlir::Value ElementWise::relu(mlir::OpBuilder &builder, mlir::Value elem, mlir::Type type) {
   auto zero = builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), builder.getFloatAttr(type, 0));
-  return builder.create<mlir::arith::MaxFOp>(builder.getUnknownLoc(), zero, elem);
+  return builder.create<mlir::arith::MaxNumFOp>(builder.getUnknownLoc(), zero, elem);
 }
 
 mlir::Value ElementWise::cast(mlir::OpBuilder &builder, mlir::Value elem, mlir::Type type) {
@@ -1058,11 +1058,11 @@ mlir::Value ElementWise::build(ComputeDAG* graph, mlir::Value input, std::string
   mlir::SmallVector<int64_t> lowerBounds(input_shape.size(), /*Value=*/0);
   mlir::SmallVector<int64_t> steps(input_shape.size(), /*Value=*/1);
   mlir::SmallVector<int64_t> upperBounds(input_shape.begin(), input_shape.end());
-  mlir::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
+  mlir::affine::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
     [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc, mlir::ValueRange ivs) {
-      auto ld_elem = nestedBuilder.create<mlir::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(ivs));
+      auto ld_elem = nestedBuilder.create<mlir::affine::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(ivs));
       auto result = operationMap[operation](nestedBuilder, ld_elem, getDType(builder, dtype));
-      nestedBuilder.create<mlir::AffineStoreOp>(nestedBuilder.getUnknownLoc(), result, output, mlir::ValueRange(ivs));
+      nestedBuilder.create<mlir::affine::AffineStoreOp>(nestedBuilder.getUnknownLoc(), result, output, mlir::ValueRange(ivs));
     }
   );
   builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(), output);
@@ -1179,7 +1179,7 @@ mlir::Value LayerNorm::build(ComputeDAG* graph, mlir::Value input, mlir::Value s
   mlir::SmallVector<int64_t> outLowerBounds(out_num, /*Value=*/0);
   mlir::SmallVector<int64_t> outSteps(out_num, /*Value=*/1);
   mlir::SmallVector<int64_t> outUpperBounds(out_shape.begin(), out_shape.end());
-  mlir::buildAffineLoopNest(builder, builder.getUnknownLoc(), outLowerBounds, outUpperBounds, outSteps,
+  mlir::affine::buildAffineLoopNest(builder, builder.getUnknownLoc(), outLowerBounds, outUpperBounds, outSteps,
     [&](mlir::OpBuilder &outNestedBuilder, mlir::Location outLoc, mlir::ValueRange outIvs) {
       auto reduceNum = outNestedBuilder.create<mlir::arith::ConstantOp>(outNestedBuilder.getUnknownLoc(), outNestedBuilder.getFloatAttr(emType, elemNum));
       auto epsNum = outNestedBuilder.create<mlir::arith::ConstantOp>(outNestedBuilder.getUnknownLoc(), outNestedBuilder.getFloatAttr(emType, eps));
@@ -1193,18 +1193,18 @@ mlir::Value LayerNorm::build(ComputeDAG* graph, mlir::Value input, mlir::Value s
       auto loop1 = buildAffineLoopNest_(outNestedBuilder, outLoc, inLowerBounds, inUpperBounds, inSteps, mlir::ValueRange({iter}), 
       [&](mlir::OpBuilder& inNestedBuilder, mlir::Location inLoc, mlir::ValueRange inIvs, mlir::ValueRange iterArgs) {
         auto ivs = getIndexArgs(inIvs, outIvs);
-        auto ld = inNestedBuilder.create<mlir::AffineLoadOp>(inNestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(ivs));
+        auto ld = inNestedBuilder.create<mlir::affine::AffineLoadOp>(inNestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(ivs));
         return inNestedBuilder.create<mlir::arith::AddFOp>(inNestedBuilder.getUnknownLoc(), ld, iterArgs[0]);
       });
       auto div1 = outNestedBuilder.create<mlir::arith::DivFOp>(outNestedBuilder.getUnknownLoc(), loop1.getResult(0), reduceNum);
-      // outNestedBuilder.create<mlir::AffineStoreOp>(outNestedBuilder.getUnknownLoc(), div1, mean, mlir::ValueRange(outIvs));
+      // outNestedBuilder.create<mlir::affine::AffineStoreOp>(outNestedBuilder.getUnknownLoc(), div1, mean, mlir::ValueRange(outIvs));
 
       auto loop2 = buildAffineLoopNest_(outNestedBuilder, outLoc, inLowerBounds, inUpperBounds, inSteps, mlir::ValueRange({iter}), 
       [&](mlir::OpBuilder& inNestedBuilder, mlir::Location inLoc, mlir::ValueRange inIvs, mlir::ValueRange iterArgs) {
         auto ivs = getIndexArgs(inIvs, outIvs);
-        auto ld = inNestedBuilder.create<mlir::AffineLoadOp>(inNestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(ivs));
+        auto ld = inNestedBuilder.create<mlir::affine::AffineLoadOp>(inNestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(ivs));
         auto subOp = inNestedBuilder.create<mlir::arith::SubFOp>(inNestedBuilder.getUnknownLoc(), ld, div1);
-        inNestedBuilder.create<mlir::AffineStoreOp>(inNestedBuilder.getUnknownLoc(), subOp, output, mlir::ValueRange(ivs));
+        inNestedBuilder.create<mlir::affine::AffineStoreOp>(inNestedBuilder.getUnknownLoc(), subOp, output, mlir::ValueRange(ivs));
         auto mulOp = inNestedBuilder.create<mlir::arith::MulFOp>(inNestedBuilder.getUnknownLoc(), subOp, subOp);
         return inNestedBuilder.create<mlir::arith::AddFOp>(inNestedBuilder.getUnknownLoc(), mulOp, iterArgs[0]);
       });
@@ -1212,9 +1212,9 @@ mlir::Value LayerNorm::build(ComputeDAG* graph, mlir::Value input, mlir::Value s
       auto addOp = outNestedBuilder.create<mlir::arith::AddFOp>(outNestedBuilder.getUnknownLoc(), div2, epsNum);
       auto sqrtOp = outNestedBuilder.create<mlir::math::SqrtOp>(outNestedBuilder.getUnknownLoc(), addOp);
       // auto div3 = outNestedBuilder.create<mlir::arith::DivFOp>(outNestedBuilder.getUnknownLoc(), one, sqrtOp);
-      // outNestedBuilder.create<mlir::AffineStoreOp>(outNestedBuilder.getUnknownLoc(), div3, invStdDev, mlir::ValueRange(outIvs));
+      // outNestedBuilder.create<mlir::affine::AffineStoreOp>(outNestedBuilder.getUnknownLoc(), div3, invStdDev, mlir::ValueRange(outIvs));
 
-      mlir::buildAffineLoopNest(outNestedBuilder, outLoc, inLowerBounds, inUpperBounds, inSteps,
+      mlir::affine::buildAffineLoopNest(outNestedBuilder, outLoc, inLowerBounds, inUpperBounds, inSteps,
       [&](mlir::OpBuilder &inNestedBuilder, mlir::Location inLoc, mlir::ValueRange inIvs) {
         auto ivs = getIndexArgs(inIvs, outIvs);
         mlir::SmallVector<mlir::Value> scaleIvs, biasIvs, tempIvs(ivs.begin(), ivs.end());
@@ -1231,14 +1231,14 @@ mlir::Value LayerNorm::build(ComputeDAG* graph, mlir::Value input, mlir::Value s
             biasIvs.insert(biasIvs.begin(), tempIvs[tempIvs.size()-1-i]);
           else biasIvs.insert(biasIvs.begin(), zero);
         }
-        auto ldElem = inNestedBuilder.create<mlir::AffineLoadOp>(inNestedBuilder.getUnknownLoc(), output, mlir::ValueRange(ivs));
-        auto ldScale = inNestedBuilder.create<mlir::AffineLoadOp>(inNestedBuilder.getUnknownLoc(), operands[1], mlir::ValueRange(scaleIvs));
-        auto ldBias = inNestedBuilder.create<mlir::AffineLoadOp>(inNestedBuilder.getUnknownLoc(), operands[2], mlir::ValueRange(biasIvs));
+        auto ldElem = inNestedBuilder.create<mlir::affine::AffineLoadOp>(inNestedBuilder.getUnknownLoc(), output, mlir::ValueRange(ivs));
+        auto ldScale = inNestedBuilder.create<mlir::affine::AffineLoadOp>(inNestedBuilder.getUnknownLoc(), operands[1], mlir::ValueRange(scaleIvs));
+        auto ldBias = inNestedBuilder.create<mlir::affine::AffineLoadOp>(inNestedBuilder.getUnknownLoc(), operands[2], mlir::ValueRange(biasIvs));
         // auto mul = inNestedBuilder.create<mlir::arith::MulFOp>(inNestedBuilder.getUnknownLoc(), ldElem, div3);
         auto div = inNestedBuilder.create<mlir::arith::DivFOp>(inNestedBuilder.getUnknownLoc(), ldElem, sqrtOp);
         auto mul = inNestedBuilder.create<mlir::arith::MulFOp>(inNestedBuilder.getUnknownLoc(), ldScale, div);
         auto add = inNestedBuilder.create<mlir::arith::AddFOp>(inNestedBuilder.getUnknownLoc(), mul, ldBias);
-        inNestedBuilder.create<mlir::AffineStoreOp>(inNestedBuilder.getUnknownLoc(), add, output, mlir::ValueRange(ivs));
+        inNestedBuilder.create<mlir::affine::AffineStoreOp>(inNestedBuilder.getUnknownLoc(), add, output, mlir::ValueRange(ivs));
       });
   });
   // builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(), llvm::makeArrayRef({output, mean, invStdDev}));
@@ -1322,7 +1322,7 @@ mlir::Value Gather::build(ComputeDAG* graph, mlir::Value input, mlir::Value indi
   mlir::SmallVector<int64_t> lowerBounds(new_shape.size(), /*Value=*/0);
   mlir::SmallVector<int64_t> steps(new_shape.size(), /*Value=*/1);
   mlir::SmallVector<int64_t> upperBounds(new_shape.begin(), new_shape.end());
-  mlir::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
+  mlir::affine::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
     [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc, mlir::ValueRange ivs) {
       mlir::SmallVector<mlir::Value> input_index = ivs;
       mlir::SmallVector<mlir::Value> indeces_index;
@@ -1334,13 +1334,13 @@ mlir::Value Gather::build(ComputeDAG* graph, mlir::Value input, mlir::Value indi
           indeces_index.push_back(ivs[axis + i]);
         }
       }
-      auto index = nestedBuilder.create<mlir::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[1], mlir::ValueRange(indeces_index));
+      auto index = nestedBuilder.create<mlir::affine::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[1], mlir::ValueRange(indeces_index));
       if (!(indices_shape.size() == 1 && indices_shape[0] == 1)) {
         input_index.erase(input_index.begin() + axis, input_index.begin() + axis + indices_shape.size());
       }
       input_index.insert(input_index.begin() + axis, index);
       auto ld_elem = nestedBuilder.create<mlir::memref::LoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(input_index));
-      nestedBuilder.create<mlir::AffineStoreOp>(nestedBuilder.getUnknownLoc(), ld_elem, output, mlir::ValueRange(ivs));
+      nestedBuilder.create<mlir::affine::AffineStoreOp>(nestedBuilder.getUnknownLoc(), ld_elem, output, mlir::ValueRange(ivs));
     }
   );
   builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(), output);
@@ -1400,13 +1400,13 @@ mlir::Value Gather::build(ComputeDAG* graph, mlir::Value input, mlir::Value indi
 //   mlir::SmallVector<int64_t> lowerBounds(new_shape.size(), /*Value=*/0);
 //   mlir::SmallVector<int64_t> steps(new_shape.size(), /*Value=*/1);
 //   mlir::SmallVector<int64_t> upperBounds(new_shape.begin(), new_shape.end());
-//   mlir::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
+//   mlir::affine::buildAffineLoopNest(builder, builder.getUnknownLoc(), lowerBounds, upperBounds, steps,
 //     [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc, mlir::ValueRange ivs) {
 //       mlir::SmallVector<mlir::Value> input_index = ivs;
 //       auto index = nestedBuilder.create<mlir::arith::ConstantIndexOp>(nestedBuilder.getUnknownLoc(), indices);
 //       input_index.insert(input_index.begin() + axis, index);
-//       auto ld_elem = nestedBuilder.create<mlir::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(input_index));
-//       nestedBuilder.create<mlir::AffineStoreOp>(nestedBuilder.getUnknownLoc(), ld_elem, output, mlir::ValueRange(ivs));
+//       auto ld_elem = nestedBuilder.create<mlir::affine::AffineLoadOp>(nestedBuilder.getUnknownLoc(), operands[0], mlir::ValueRange(input_index));
+//       nestedBuilder.create<mlir::affine::AffineStoreOp>(nestedBuilder.getUnknownLoc(), ld_elem, output, mlir::ValueRange(ivs));
 //     }
 //   );
 //   builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(), output);

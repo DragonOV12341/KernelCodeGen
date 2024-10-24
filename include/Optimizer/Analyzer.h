@@ -7,7 +7,7 @@
 namespace KernelCodeGen {
 
 struct CompareLoop {
-  int operator()(const mlir::AffineForOp& x, const mlir::AffineForOp& y) const {
+  int operator()(const mlir::affine::AffineForOp& x, const mlir::affine::AffineForOp& y) const {
     mlir::Operation* x_ptr = x;
     mlir::Operation* y_ptr = y;
     auto x_hashCode = reinterpret_cast<size_t>(x_ptr);
@@ -41,13 +41,13 @@ struct CompareFuncCall {
 
 struct Analyzer {
   Analyzer() = default;
-  static std::vector<mlir::AffineForOp> collectOutermostLoop(mlir::ModuleOp& module); 
+  static std::vector<mlir::affine::AffineForOp> collectOutermostLoop(mlir::ModuleOp& module); 
 
   /// @brief 
   /// @param parallelLevel 
   /// @param totalNumber 
   /// @return 
-  static std::vector<int64_t> getParallelNumber(mlir::AffineParallelOp parallelLevel, int64_t& totalNumber) {
+  static std::vector<int64_t> getParallelNumber(mlir::affine::AffineParallelOp parallelLevel, int64_t& totalNumber) {
     auto dim = parallelLevel.getNumDims();
     totalNumber = 1;
     std::vector<int64_t> result;
@@ -63,7 +63,7 @@ struct Analyzer {
     return result;
   }
   static std::vector<mlir::func::FuncOp> collectFunctions(mlir::ModuleOp& module, const std::string& targetFuncName = {""});
-  static std::vector<mlir::AffineForOp> collectFuncLoops(mlir::func::FuncOp funcOp);
+  static std::vector<mlir::affine::AffineForOp> collectFuncLoops(mlir::func::FuncOp funcOp);
   static std::vector<mlir::func::CallOp> collectFuncCalls(mlir::ModuleOp& module);
   static mlir::func::FuncOp getTargetFunction(mlir::ModuleOp& module, const std::string& targetFuncName);
   static int getUsersNumber(mlir::Value::user_range users);
