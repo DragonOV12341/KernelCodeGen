@@ -11,18 +11,18 @@ void test_operators() {
   auto graph = generator.createGraph("demo");
   generator.setLogMode(Log::Debug);
   // generator.opts.push_back(std::move(std::make_unique<BatchMatmulOptimizer>()));
-  // generator.opts.push_back(std::move(std::make_unique<MatmulOptimizer>()));
+  generator.opts.push_back(std::move(std::make_unique<MatmulOptimizer>()));
   // generator.opts.push_back(std::move(std::make_unique<BinaryOptimizer>()));
-  generator.opts.push_back(std::move(std::make_unique<ElementWiseOptimizer>()));
+  // generator.opts.push_back(std::move(std::make_unique<ElementWiseOptimizer>()));
   // generator.opts.push_back(std::move(std::make_unique<LayerNormOptimizer>()));
   // generator.opts.push_back(std::move(std::make_unique<GatherOptimizer>()));
   
 
-  auto A = graph.create<PlaceHolder>(std::vector<int64_t>{2, 768, 768}, std::string{"float32"});
+  // auto A = graph.create<PlaceHolder>(std::vector<int64_t>{2, 768, 768}, std::string{"float32"});
   // int64_t axis = 0;
   // auto indices = graph.create<PlaceHolder>(std::vector<int64_t>{1}, std::string{"index"});
   // auto gather = graph.create<Gather>(A, indices, axis);
-  auto gelu = graph.create<ElementWise>(A, "Cast", MemorySpace::global, "int32");  // 必须使用MemorySpace::global，且int16只能转float16，etc.
+  // auto gelu = graph.create<ElementWise>(A, "Cast", MemorySpace::global, "int32");  // 必须使用MemorySpace::global，且int16只能转float16，etc.
 
   // int64_t axis_ = 1;
   // float eps=1e-5;
@@ -34,10 +34,10 @@ void test_operators() {
   // auto B = graph.create<PlaceHolder>(std::vector<int64_t>{1, 128, 256}, std::string{"float32"});
   // graph.create<Binary>(A, B, "Add");
 
-  // int m = 2048, n = 2048, k = 1024;
-  // auto A = graph.create<PlaceHolder>(std::vector<int64_t>{m, k}, std::string{"float32"});
-  // auto B = graph.create<PlaceHolder>(std::vector<int64_t>{k, n}, std::string{"float32"});
-  // auto C = graph.create<Matmul>(A, B);
+  int m = 2048, n = 2048, k = 1024;
+  auto A = graph.create<PlaceHolder>(std::vector<int64_t>{m, k}, std::string{"float32"});
+  auto B = graph.create<PlaceHolder>(std::vector<int64_t>{k, n}, std::string{"float32"});
+  auto C = graph.create<Matmul>(A, B);
 
   // auto A = graph.create<PlaceHolder>(std::vector<int64_t>{256, 2048, 64}, std::string{"float32"});
   // auto B = graph.create<PlaceHolder>(std::vector<int64_t>{256, 2048, 64}, std::string{"float32"});
@@ -45,8 +45,10 @@ void test_operators() {
 
   graph.dump();
   auto module = generator.optimize(graph);
+  // auto&& sourceCode = generator.codegen(module);
+  auto ret= generator.lowering(module);
   generator.dump(module);
-  auto&& sourceCode = generator.codegen(module);
+  std::cout << ret << std::endl;
 }
 
 void test_matmul() {
@@ -164,8 +166,8 @@ void test_flash_attention() {
 
 int main(int argc, char* argv[]) {
 
-  test_matmul();
-  // test_operators();
+  // test_matmul();
+  test_operators();
   // test_flash_attention();
 
 }

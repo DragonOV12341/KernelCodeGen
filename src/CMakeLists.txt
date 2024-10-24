@@ -13,10 +13,13 @@ file(GLOB optimzer_src ./Optimizer/*.cc)
 
 file(GLOB backend_src ./Backend/*.cc)
 
+file(GLOB lowering_src ./Lowering/*.cc)
+
 add_library(kcg_runtime 
             ${frontend_src}
             ${optimzer_src}
             ${backend_src}
+            ${lowering_src}
         #     ${graph_tune_src} 
         #     ${scheduler_src} 
         #     ${auto_tune_src} 

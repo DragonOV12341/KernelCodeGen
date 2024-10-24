@@ -118,4 +118,18 @@ mlir::ModuleOp& KernelCodeGenerator::optimize(ComputeDAG& graph_) {
   }
   return bestModule;
 }
+
+bool KernelCodeGenerator::lowering(mlir::ModuleOp &module) {
+  mlir::PassManager pm(&context);
+  pm.addPass(createLowerToLLVMPass());
+  // pm.addPass(mlir::createLowerAffinePass());
+  pm.addPass(mlir::createConvertSCFToCFPass());
+  // pm.addPass(mlir::arith::populateArithToLLVMConversionPatterns());
+  // pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
+  // pm.addPass(mlir::cf::createConvertControlFlowToLLVMPass());
+  // pm.addPass(mlir::createConvertFuncToLLVMPass());
+  if (mlir::failed(pm.run(module)))
+    return false;
+  return true;  
+}
 }

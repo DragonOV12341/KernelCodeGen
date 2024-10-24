@@ -2,6 +2,7 @@
 
 #include "Frontend/Operators.h"
 #include "Optimizer/Optimizer.h"
+#include "Lowering/LowerToLLVM.h"
 #include "Backend/CUDA.h"
 #include "log.h"
 
@@ -71,6 +72,7 @@ public:
     context.getOrLoadDialect<mlir::vector::VectorDialect>();
     context.getOrLoadDialect<mlir::scf::SCFDialect>();
     context.getOrLoadDialect<mlir::math::MathDialect>();
+    context.getOrLoadDialect<mlir::cf::ControlFlowDialect>();
     mlir::registerAllPasses();
   }
 
@@ -131,6 +133,7 @@ public:
   }
 
   mlir::ModuleOp& optimize(ComputeDAG& graph_);
+  bool lowering(mlir::ModuleOp &module);
 
   float evaluate(mlir::ModuleOp& module) {
     return 0.0f;
