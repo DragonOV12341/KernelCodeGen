@@ -9,6 +9,7 @@
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
+#include "mlir/Conversion/VectorToLLVM/ConvertVectorToLLVM.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -30,12 +31,17 @@ namespace KernelCodeGen {
 struct LoweringToLLVMPass : public PassWrapper<LoweringToLLVMPass, OperationPass<ModuleOp>> {
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LoweringToLLVMPass)
 
-  void getDependentDialects(DialectRegistry &registry) const override {
-    registry.insert<LLVM::LLVMDialect, scf::SCFDialect>();
-  }
   void runOnOperation() final;
 };
 
 std::unique_ptr<mlir::OperationPass<mlir::ModuleOp>> createLowerToLLVMPass();
+
+struct ArithCFLoweringToLLVMPass : public PassWrapper<ArithCFLoweringToLLVMPass, OperationPass<ModuleOp>> {
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ArithCFLoweringToLLVMPass)
+
+  void runOnOperation() final;
+};
+
+std::unique_ptr<mlir::OperationPass<mlir::ModuleOp>> createArithCFLowerToLLVMPass();
 
 }

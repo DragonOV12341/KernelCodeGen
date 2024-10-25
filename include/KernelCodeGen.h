@@ -73,6 +73,7 @@ public:
     context.getOrLoadDialect<mlir::scf::SCFDialect>();
     context.getOrLoadDialect<mlir::math::MathDialect>();
     context.getOrLoadDialect<mlir::cf::ControlFlowDialect>();
+    context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
     mlir::registerAllPasses();
   }
 
