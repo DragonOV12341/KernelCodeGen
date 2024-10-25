@@ -56,6 +56,7 @@ include_directories(${KernelCodeGen_SOURCE_DIR}/build/include)
 
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
+message("add-def:${LLVM_DEFINITIONS}")
 add_compile_options(-g)
 
 

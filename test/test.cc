@@ -47,7 +47,7 @@ void test_operators() {
   auto module = generator.optimize(graph);
   // auto&& sourceCode = generator.codegen(module);
   auto ret= generator.lowering(module);
-  generator.dump(module);
+  // generator.dump(module);
   std::cout << ret << std::endl;
 }
 
