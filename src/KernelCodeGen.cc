@@ -121,9 +121,9 @@ mlir::ModuleOp& KernelCodeGenerator::optimize(ComputeDAG& graph_) {
 
 bool KernelCodeGenerator::lowering(mlir::ModuleOp &module) {
   mlir::PassManager pm(&context);
+  pm.addPass(mlir::createConvertSCFToCFPass());
   pm.addPass(createLowerToLLVMPass());
   // pm.addPass(mlir::createLowerAffinePass());
-  pm.addPass(mlir::createConvertSCFToCFPass());
   // pm.addPass(mlir::arith::populateArithToLLVMConversionPatterns());
   // pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
   // pm.addPass(mlir::cf::createConvertControlFlowToLLVMPass());
