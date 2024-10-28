@@ -23,6 +23,7 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/Sequence.h"
+#include "mlir/Conversion/Passes.h.inc"
 
 using namespace mlir;
 

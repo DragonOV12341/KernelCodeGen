@@ -30,14 +30,14 @@ void test_operators() {
   // auto bias = graph.create<PlaceHolder>(std::vector<int64_t>{768, 768}, std::string{"float32"});
   // auto layernorm = graph.create<LayerNorm>(A, scale, bias, axis_, eps);
 
-  // auto A = graph.create<PlaceHolder>(std::vector<int64_t>{16, 1, 1, 256}, std::string{"float32"});
-  // auto B = graph.create<PlaceHolder>(std::vector<int64_t>{1, 128, 256}, std::string{"float32"});
-  // graph.create<Binary>(A, B, "Add");
+  auto A = graph.create<PlaceHolder>(std::vector<int64_t>{256, 256}, std::string{"float32"});
+  auto B = graph.create<PlaceHolder>(std::vector<int64_t>{256, 256}, std::string{"float32"});
+  graph.create<Binary>(A, B, "Add");
 
-  int m = 2048, n = 2048, k = 1024;
-  auto A = graph.create<PlaceHolder>(std::vector<int64_t>{m, k}, std::string{"float32"});
-  auto B = graph.create<PlaceHolder>(std::vector<int64_t>{k, n}, std::string{"float32"});
-  auto C = graph.create<Matmul>(A, B);
+  // int m = 2048, n = 2048, k = 1024;
+  // auto A = graph.create<PlaceHolder>(std::vector<int64_t>{m, k}, std::string{"float32"});
+  // auto B = graph.create<PlaceHolder>(std::vector<int64_t>{k, n}, std::string{"float32"});
+  // auto C = graph.create<Matmul>(A, B);
 
   // auto A = graph.create<PlaceHolder>(std::vector<int64_t>{256, 2048, 64}, std::string{"float32"});
   // auto B = graph.create<PlaceHolder>(std::vector<int64_t>{256, 2048, 64}, std::string{"float32"});
@@ -47,8 +47,8 @@ void test_operators() {
   auto module = generator.optimize(graph);
   // auto&& sourceCode = generator.codegen(module);
   auto ret= generator.lowering(module);
-  // generator.dump(module);
-  std::cout << ret << std::endl;
+  generator.dump(module);
+  // std::cout << ret << std::endl;
 }
 
 void test_matmul() {

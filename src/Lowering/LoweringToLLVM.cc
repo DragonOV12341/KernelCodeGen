@@ -42,7 +42,7 @@ void ArithCFLoweringToLLVMPass::runOnOperation() {
   target.addLegalDialect<gpu::GPUDialect>();
   RewritePatternSet patterns(&getContext());
   mlir::arith::populateArithToLLVMConversionPatterns(typeConverter, patterns);
-  // cf::populateControlFlowToLLVMConversionPatterns(typeConverter, patterns);  // cf ->llvm  （这个转不过去，应该是类型不匹配）
+  cf::populateControlFlowToLLVMConversionPatterns(typeConverter, patterns);  // cf ->llvm  （这个转不过去，应该是类型不匹配）
 
   auto module = getOperation();
   if (failed(applyFullConversion(module, target, std::move(patterns))))

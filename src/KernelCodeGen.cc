@@ -121,14 +121,16 @@ mlir::ModuleOp& KernelCodeGenerator::optimize(ComputeDAG& graph_) {
 
 bool KernelCodeGenerator::lowering(mlir::ModuleOp &module) {
   mlir::PassManager pm(&context);
-  pm.addPass(createLowerToLLVMPass());              // affine -> scf | affine -> vector -> llvm  | func/memref ->llvm  | 
-  pm.addPass(mlir::createConvertSCFToCFPass());      // scf -> cf
-  pm.addPass(createArithCFLowerToLLVMPass());  // arith/cf -> llvm  (还有一个gpu.br没转)
-  // pm.addPass(mlir::createLowerAffinePass());
-  // pm.addPass(mlir::arith::populateArithToLLVMConversionPatterns());
-  // pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
-  // pm.addPass(mlir::cf::createConvertControlFlowToLLVMPass());
-  // pm.addPass(mlir::createConvertFuncToLLVMPass());
+  // pm.addPass(createLowerToLLVMPass());              // affine -> scf | affine -> vector -> llvm  | func/memref ->llvm  | 
+  // pm.addPass(createArithCFLowerToLLVMPass());  // arith/cf -> llvm  (还有一个gpu.br没转)
+  pm.addPass(mlir::createLowerAffinePass());                     // affine -> scf/vector
+  pm.addPass(mlir::createConvertSCFToCFPass());                  // scf -> cf
+  pm.addPass(mlir::createConvertVectorToLLVMPass());             // vector -> llvm
+  pm.addPass(mlir::createArithToLLVMConversionPass());           // arith -> llvm
+  pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());  // memref -> llvm
+  pm.addPass(mlir::createConvertControlFlowToLLVMPass());        // cf -> llvm
+  pm.addPass(mlir::createConvertFuncToLLVMPass());               // func -> llvm
+
   if (mlir::failed(pm.run(module)))
     return false;
   return true;  
