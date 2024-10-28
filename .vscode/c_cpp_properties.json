@@ -4,9 +4,17 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/include",
-                "~/llvm-install/include"
+                "~/llvm-install/include",
+                "~/anaconda3/envs/triton_rocm/include/python3.8"
             ],
-            "defines": ["_DEBUG", "_GLIBCXX_ASSERTIONS", "_LIBCPP_ENABLE_HARDENED_MODE", "__STDC_CONSTANT_MACROS", "__STDC_FORMAT_MACROS", "__STDC_LIMIT_MACROS"],
+            "defines": [
+                "_DEBUG",
+                "_GLIBCXX_ASSERTIONS",
+                "_LIBCPP_ENABLE_HARDENED_MODE",
+                "__STDC_CONSTANT_MACROS",
+                "__STDC_FORMAT_MACROS",
+                "__STDC_LIMIT_MACROS"
+            ],
             "compilerPath": "/usr/bin/g++",
             "cStandard": "c17",
             "cppStandard": "c++17"

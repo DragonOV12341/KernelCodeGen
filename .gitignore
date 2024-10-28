@@ -8,3 +8,4 @@ doc/CodeDoc.md
 doc/pass.md
 test/matmul
 test/flash-attn
+src/Runtime/python/__pycache__/*
