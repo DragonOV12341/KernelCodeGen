@@ -9,3 +9,4 @@ doc/pass.md
 test/matmul
 test/flash-attn
 src/Runtime/python/__pycache__/*
+src/Runtime/python/kcg/common/__pycache__/*
