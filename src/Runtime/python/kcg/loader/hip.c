@@ -129,12 +129,12 @@ static PyMethodDef ModuleMethods[] = {
     {NULL, NULL, 0, NULL} // sentinel
 };
 
-static struct PyModuleDef ModuleDef = {PyModuleDef_HEAD_INIT, "hip_utils",
+static struct PyModuleDef ModuleDef = {PyModuleDef_HEAD_INIT, "loader_hip",
                                        NULL, // documentation
                                        -1,   // size
                                        ModuleMethods};
 
-PyMODINIT_FUNC PyInit_hip_utils(void) {
+PyMODINIT_FUNC PyInit_loader_hip(void) {
   PyObject *m = PyModule_Create(&ModuleDef);
   if (m == NULL) {
     return NULL;

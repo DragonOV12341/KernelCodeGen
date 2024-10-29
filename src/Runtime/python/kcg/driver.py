@@ -1,20 +1,12 @@
-# 根据当前环境，创建Hip 或 Cuda的Loader，用于加载二进制文件
-
 import abc
 import hashlib
 import os
 import tempfile
 from pathlib import Path
 
-import build
-from build import build_cmd
-# from .cache import get_cache_manager
+from kcg.common.build import build_cmd
+from kcg.common.cache import get_cache_manager
 
-
-def get_default_cache_path() ->str :
-    print("[D] use default cache path. to be modified")
-    return "/home/pangyunfei/xushilong/KernelCodeGen/src/Runtime"
-    
 
 class DriverBase(metaclass=abc.ABCMeta):
     CUDA = 0
@@ -33,37 +25,35 @@ class DriverBase(metaclass=abc.ABCMeta):
 # -----------------------------
 
 
-class CudaUtils(object):
-    m_cache_path = None
+class CudaLoader(object):
     # singleton
     def __new__(cls):
         if not hasattr(cls, "instance"):
-            cls.instance = super(CudaUtils, cls).__new__(cls)
+            cls.instance = super(CudaLoader, cls).__new__(cls)
         return cls.instance
 
     def __init__(self):
+        # compile loader_cuda.so and cache it
         dirname = os.path.dirname(os.path.realpath(__file__))
-        src = Path(os.path.join(dirname, "Loader", "cuda.c")).read_text()
+        src = Path(os.path.join(dirname, "loader", "cuda.c")).read_text()
         key = hashlib.md5(src.encode("utf-8")).hexdigest()
-        # cache = get_cache_manager(key)
-        fname = "cuda_utils.so"
-        
-        # cache_path = cache.get_file(fname)
-        if self.m_cache_path is None:
-            # with tempfile.TemporaryDirectory() as tmpdir:
-            src_path = os.path.join(get_default_cache_path(), "__main.c")
-            with open(src_path, "w") as f:
-                f.write(src)
-            so = build_cmd("cuda_utils", src_path, self.m_cache_path)
-            self.m_cache_path = so
-
-            # with open(so, "rb") as f:
-            #     cache_path = cache.put(f.read(), fname, binary=True)
+        cache = get_cache_manager(key)
+        fname = "loader_cuda.so"
+        cache_path = cache.get_file(fname)
+        if cache_path is None:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                src_path = os.path.join(tmpdir, "main.c")
+                with open(src_path, "w") as f:
+                    f.write(src)
+                so = build_cmd("loader_cuda", src_path, tmpdir)
+                with open(so, "rb") as f:
+                    cache_path = cache.put(f.read(), fname, binary=True)
         import importlib.util
 
-        spec = importlib.util.spec_from_file_location("cuda_utils", self.m_cache_path)
+        spec = importlib.util.spec_from_file_location("loader_cuda", cache_path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
+        # function binding
         self.load_binary = mod.load_binary
         self.get_device_properties = mod.get_device_properties
         self.CUtensorMapDataType = mod.CUtensorMapDataType
@@ -78,14 +68,13 @@ class CudaUtils(object):
 
 
 class CudaDriver(DriverBase):
-
     def __new__(cls):
         if not hasattr(cls, "instance"):
             cls.instance = super(CudaDriver, cls).__new__(cls)
         return cls.instance
 
     def __init__(self):
-        self.utils = CudaUtils()
+        self.loader = CudaLoader()
         self.backend = self.CUDA
 
 
@@ -93,33 +82,32 @@ class CudaDriver(DriverBase):
 # HIP
 # -----------------------------
 
+# Loader
+class HIPLoader(object):
 
-class HIPUtils(object):
-    m_cache_path = None
     def __new__(cls):
         if not hasattr(cls, "instance"):
-            cls.instance = super(HIPUtils, cls).__new__(cls)
+            cls.instance = super(HIPLoader, cls).__new__(cls)
         return cls.instance
 
     def __init__(self):
         dirname = os.path.dirname(os.path.realpath(__file__))
-        src = Path(os.path.join(dirname, "Loader", "hip.c")).read_text()
+        src = Path(os.path.join(dirname, "loader", "hip.c")).read_text()
         key = hashlib.md5(src.encode("utf-8")).hexdigest()
-        # cache = get_cache_manager(key)
-        fname = "hip_utils.so"
-        # cache_path = cache.get_file(fname)
-        if self.m_cache_path is None:
-            # with tempfile.TemporaryDirectory() as tmpdir:
-            src_path = os.path.join(get_default_cache_path(), "__main.c")
-            with open(src_path, "w") as f:
-                f.write(src)
-            so = build_cmd("hip_utils", src_path, self.m_cache_path)
-            self.m_cache_path = so
-            # with open(so, "rb") as f:
-            #     cache_path = cache.put(f.read(), fname, binary=True)
+        cache = get_cache_manager(key)
+        fname = "loader_hip.so"
+        cache_path = cache.get_file(fname)
+        if cache_path is None:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                src_path = os.path.join(tmpdir, "main.c")
+                with open(src_path, "w") as f:
+                    f.write(src)
+                so = build_cmd("loader_hip", src_path, tmpdir)
+                with open(so, "rb") as f:
+                    cache_path = cache.put(f.read(), fname, binary=True)
         import importlib.util
 
-        spec = importlib.util.spec_from_file_location("hip_utils", self.m_cache_path)
+        spec = importlib.util.spec_from_file_location("loader_hip", cache_path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         self.load_binary = mod.load_binary
@@ -127,14 +115,14 @@ class HIPUtils(object):
 
 
 class HIPDriver(DriverBase):
-    # singleton
+
     def __new__(cls):
         if not hasattr(cls, "instance"):
             cls.instance = super(HIPDriver, cls).__new__(cls)
         return cls.instance
 
     def __init__(self):
-        self.utils = HIPUtils()
+        self.loader = HIPLoader()
         self.backend = self.HIP
 
 
@@ -146,7 +134,7 @@ class UnsupportedDriver(DriverBase):
         return cls.instance
 
     def __init__(self):
-        self.utils = None
+        self.loader = None
         self.backend = None
 
 
@@ -202,4 +190,3 @@ def initialize_driver():
 
 
 driver = LazyProxy(initialize_driver)
-

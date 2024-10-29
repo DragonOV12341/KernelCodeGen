@@ -163,14 +163,14 @@ DEFINE_CUUINT_CONSTRUCTOR(CUuint32, cuuint32_t, "l", long)
 DEFINE_CUUINT_CONSTRUCTOR(CUuint64, cuuint64_t, "L", long long)
 
 static PyTypeObject PyCUuint32_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "cuda_utils.cuuint32_t",
+    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "loader_cuda.cuuint32_t",
     .tp_basicsize = sizeof(PyCUuint32),
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = PyCUuint32_New,
 };
 
 static PyTypeObject PyCUuint64_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "cuda_utils.cuuint64_t",
+    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "loader_cuda.cuuint64_t",
     .tp_basicsize = sizeof(PyCUuint64),
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = PyCUuint64_New,
@@ -459,12 +459,12 @@ static PyMethodDef ModuleMethods[] = {
     {NULL, NULL, 0, NULL} // sentinel
 };
 
-static struct PyModuleDef ModuleDef = {PyModuleDef_HEAD_INIT, "cuda_utils",
+static struct PyModuleDef ModuleDef = {PyModuleDef_HEAD_INIT, "loader_cuda",
                                        NULL, // documentation
                                        -1,   // size
                                        ModuleMethods};
 
-PyMODINIT_FUNC PyInit_cuda_utils(void) {
+PyMODINIT_FUNC PyInit_loader_cuda(void) {
   PyObject *m = PyModule_Create(&ModuleDef);
   if (m == NULL) {
     return NULL;
