@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-from kcg.driver import driver
+from Runtime.python.kcg.Loader import driver
 
 
 def generate_cu_signature(constants, signature, ids):

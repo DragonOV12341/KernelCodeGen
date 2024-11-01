@@ -5,6 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "PythonDebug-Runtime",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/Runtime/python/kcg/test.py",
+            "console": "integratedTerminal",
+            "python": "/home/pangyunfei/anaconda3/envs/triton_rocm/bin/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/Runtime/python"
+            }
+        },
+        {
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
@@ -29,6 +40,5 @@
             ],
             "miDebuggerPath": "/usr/bin/gdb"
         }
-
     ]
 }

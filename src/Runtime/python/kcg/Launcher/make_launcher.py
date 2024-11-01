@@ -5,7 +5,7 @@ import tempfile
 from kcg.common.build import build_cmd
 from kcg.common.backend import get_cuda_version_key
 from common.build import is_hip
-from common.cache import get_cache_manager
+from Runtime.python.kcg.common.Cache import get_cache_manager
 from kcg.utils import generate_cu_signature
 
 # ----- stub --------

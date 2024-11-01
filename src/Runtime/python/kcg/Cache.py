@@ -1,22 +1,13 @@
+# File Cache Manager. 
+
 import json
 import os
 import random
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, Optional
-
-
-def default_cache_dir():
-    return os.path.join(Path.home(), ".kcg", "cache")
-
-
-def default_override_dir():
-    return os.path.join(Path.home(), ".kcg", "override")
-
-
-def default_dump_dir():
-    return os.path.join(Path.home(), ".kcg", "dump")
-
+from kcg.Kernel import *
+from kcg.Cache import *
 
 class CacheManager(ABC):
 
@@ -50,18 +41,18 @@ class FileCacheManager(CacheManager):
         self.key = key
         self.lock_path = None
         if dump:
-            self.cache_dir = default_dump_dir()
+            self.cache_dir = PathManager.default_dump_dir()
             self.cache_dir = os.path.join(self.cache_dir, self.key)
             self.lock_path = os.path.join(self.cache_dir, "lock")
             os.makedirs(self.cache_dir, exist_ok=True)
         elif override:
-            self.cache_dir = default_override_dir()
+            self.cache_dir = PathManager.default_override_dir()
             self.cache_dir = os.path.join(self.cache_dir, self.key)
         else:
             # create cache directory if it doesn't exist
-            self.cache_dir = os.getenv("KCG_CACHE_DIR", "").strip() or default_cache_dir()
+            self.cache_dir = os.getenv("KCG_CACHE_DIR", "").strip() or PathManager.default_cache_dir()
             if self.cache_dir:
-                self.cache_dir = os.path.join(self.cache_dir, self.key)
+                self.cache_dir = os.path.join(self.cache_dir, str(self.key))
                 self.lock_path = os.path.join(self.cache_dir, "lock")
                 os.makedirs(self.cache_dir, exist_ok=True)
             else:
@@ -129,32 +120,3 @@ class FileCacheManager(CacheManager):
         os.replace(temp_path, filepath)
         return filepath
 
-
-__cache_cls = FileCacheManager
-__cache_cls_nme = "DEFAULT"
-
-
-def get_cache_manager(key) -> CacheManager:
-    import os
-
-    user_cache_manager = os.environ.get("KCG_CACHE_MANAGER", None)
-    global __cache_cls
-    global __cache_cls_nme
-
-    if user_cache_manager is not None and user_cache_manager != __cache_cls_nme:
-        import importlib
-
-        module_path, clz_nme = user_cache_manager.split(":")
-        module = importlib.import_module(module_path)
-        __cache_cls = getattr(module, clz_nme)
-        __cache_cls_nme = user_cache_manager
-
-    return __cache_cls(key)
-
-
-def get_override_manager(key) -> CacheManager:
-    return __cache_cls(key, override=True)
-
-
-def get_dump_manager(key) -> CacheManager:
-    return __cache_cls(key, dump=True)

@@ -6,15 +6,13 @@ import tempfile
 from pathlib import Path
 from typing import Any, Tuple
 
-from kcg.common.build import build_cmd
 
-from kcg.common.backend import BaseBackend, register_backend, compute_core_version_key
-from kcg.launcher.make_launcher import get_cache_manager, make_so_cache_key
-from kcg.utils import generate_cu_signature
+# from kcg.common.backend import BaseBackend, register_backend, compute_core_version_key
+# from kcg.Utils import generate_cu_signature
 
-# from triton.runtime import jit
-from kcg.driver import HIPDriver
-# from triton.compiler.compiler import optimize_ttgir, parse_mlir_module, ttgir_to_llir, ttir_to_ttgir
+from kcg.Launcher.make_launcher import get_cache_manager, make_so_cache_key
+from kcg.Utils import *
+from kcg.Kernel import *
 
 # HIP_BACKEND_MODE = False
 
@@ -100,7 +98,8 @@ def generate_launcher_hip(constants, signature, ids):
 
     # generate glue code
     folded_without_constexprs = [c for c in ids['ids_of_folded_args'] if c not in ids['ids_of_const_exprs']]
-    params = [i for i in signature.keys() if i >= start_desc or (i not in constants and i not in folded_without_constexprs)]
+    # params = [i for i in signature.keys() if i >= start_desc or (i not in constants and i not in folded_without_constexprs)]
+    params = [i for i,ty in signature.items() ]
     src = f"""
 #define __HIP_PLATFORM_AMD__
 #include <hip/hip_runtime.h>
@@ -491,3 +490,16 @@ class HIPBackend(BaseBackend):
 
     def get_matrix_core_version(self):
         return gpu_matrix_core_version()
+
+
+
+class HIPLauncher :
+    __m_kernelLib : KernelLibFile = None
+    m_cWrapper = None
+    def __init__(self,kernelBinaryPath,name,shmSize,device=DeviceInfo.get_current_device()):
+        self.__m_kernelLib = KernelLibFile(kernelBinaryPath,EnumBackendType.HIP,name,shmSize,device)
+        loader = HIPLoaderST()
+        loader.loadBinary(self.__m_kernelLib)
+        # make launcher
+        
+        
