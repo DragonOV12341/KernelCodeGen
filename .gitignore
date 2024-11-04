@@ -10,3 +10,4 @@ test/matmul
 test/flash-attn
 src/Runtime/python/__pycache__/*
 src/Runtime/python/kcg/common/__pycache__/*
+src/Runtime/python/kcg/__pycache__/*

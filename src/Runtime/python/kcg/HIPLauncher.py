@@ -32,12 +32,18 @@ def make_stub(kernelLibFile : KernelLibFile) -> str :
     cache_path = so_cache_manager.get_file(so_name)
     if cache_path is None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            src = generate_launcher_hip(kernelLibFile)
+            
+            # src = generate_launcher_hip(kernelLibFile)
+            src = []
+            with open("/home/pangyunfei/xushilong/KernelCodeGen/stubCode_hip.cpp") as ff:
+                src = ff.readlines()
             src_path = os.path.join(tmpdir, "main.c")
             with open(src_path, "w") as f:
-                f.write(src)  # generate stub code
+                for line in src:
+                    f.write(line)  # generate stub code
             with open("/home/pangyunfei/xushilong/KernelCodeGen/tempsrc.cpp", "w") as f:
-                f.write(src)  # generate stub code
+                for line in src:
+                    f.write(line)  # generate stub code
             so = build(so_name, src_path, tmpdir)
             with open(so, "rb") as f:
                 return so_cache_manager.put(f.read(), so_name, binary=True)
@@ -376,6 +382,18 @@ PyMODINIT_FUNC PyInit___kcg_launcher(void) {{
 #     paths = list(extern_libs.values())
 #     return names, paths
 
+class MockData :
+    def __init__(self):
+        self.grid_0 = 4096
+        self.grid_1 = 1
+        self.grid_2 = 1
+        self.num_warps = 8
+        self.num_ctas = 1
+        self.clusterDims_0 = 1
+        self.clusterDims_1 = 1
+        self.clusterDims_2 = 1
+        self.shared = 16896
+
 
 class HIPLauncher :
     def __init__(self, kernelBinaryPath,kernelFuncName,shmSize,signature:dict,device=DeviceInfo.get_current_device()):
@@ -390,7 +408,7 @@ class HIPLauncher :
         loader = HIPLoaderST()
         loader.loadBinary(self.m_kernelLib)
     
-    def getLauncher(self):
+    def _getWrapper(self) -> Callable:
         if self.m_launcherLibPath is None :
             if self.m_kernelLib.m_kernelInfo is None : 
                 self.__loadKernel()
@@ -403,13 +421,25 @@ class HIPLauncher :
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             self.m_cWrapper = getattr(mod, "launch")
-      
-    def launchKernel(self):
-        self.getLauncher()
-		# self.c_wrapper(grid[0], grid[1], grid[2], self.num_warps, self.num_ctas, self.clusterDims[0],
-		# 		self.clusterDims[1], self.clusterDims[2], self.shared, stream, self.cu_function,
-		# 		CompiledKernel.launch_enter_hook, CompiledKernel.launch_exit_hook, self, *args_expand)
-        if self.m_cWrapper is None:
+        return self.m_cWrapper
+
+    def launchKernel(self,*args,**kwargs):
+        m = MockData()
+        wrapper = self._getWrapper()
+        stream = DeviceInfo.get_cuda_stream()
+
+
+        if wrapper is None:
+            raise Exception("kcg: _getWrapper failed")
+        
+        wrapper(m.grid_0,m.grid_1,m.grid_2,m.num_warps,m.num_ctas,
+                m.clusterDims_0,m.clusterDims_1,m.clusterDims_2,
+                m.shared,stream,
+                self.m_kernelLib.m_kernelInfo.m_function, None,None,self,*args )
+        # self.c_wrapper(grid[0], grid[1], grid[2], self.num_warps, self.num_ctas, self.clusterDims[0],
+        #     self.clusterDims[1], self.clusterDims[2], self.shared, stream, self.cu_function,
+        #     CompiledKernel.launch_enter_hook, CompiledKernel.launch_exit_hook, self, *args_expand)
+        if wrapper is None :
             print("[D] error cwrapper")
         else:
             print("[D] success cwrapper")

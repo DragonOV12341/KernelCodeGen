@@ -13,9 +13,9 @@ class CompiledKernel:
         self.m_loader = HIPLoaderST()
         self.m_launcher = HIPLauncher(kernelBinaryPath,kernelName,shmSize,self.signature,device)
         
-    def run(self):
+    def run(self,*args,**kwargs):
         if self.m_launcher is not None:
             print("[D] run")
-            self.m_launcher.launchKernel()
+            self.m_launcher.launchKernel(*args)
         
     
