@@ -152,7 +152,18 @@ class EnumBackendType(Enum):
     def __str__(self):
         return f'{self.name}'
 
-
+def get_kernel_name(src: str, pattern: str) -> str:
+    '''
+    Get kernel name from ptx/amdgcn code.
+    This Kernel name is required when launching the kernel.
+    '''
+    # There is a name mangling in PTX codegen, so the original kernel names in Triton IR are not available in PTX/cubin.
+    assert src
+    for line in src.split('\n'):
+        line = line.strip()
+        if line.startswith(pattern):
+            return line.split()[-1]
+    
 def calculate_file_hash(file_path ,algorithm='md5',hash_len=10) -> int:
     # 以二进制只读模式打开文件
     ret = ""

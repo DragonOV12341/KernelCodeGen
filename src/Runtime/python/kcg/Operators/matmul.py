@@ -3,7 +3,7 @@ from kcg.Kernel import kcg_kernel
 
 # 核函数stub. 用于提供 Kernel 形参列表
 @kcg_kernel
-def matmul_kernel(
+def _matmul_kernel(
         # Pointers to matrices
         a_ptr, b_ptr, c_ptr,
         # Matrix dimensions
@@ -23,7 +23,8 @@ def matmul_kernel(
     pass
 
 # Call hook. 在这里带入实参并调用
-def matmul(a, b):
+
+def _matmul(a, b):
     # Check constraints.
     assert a.shape[1] == b.shape[0], "Incompatible dimensions"
     assert a.is_contiguous(), "Matrix A must be contiguous"
@@ -35,7 +36,7 @@ def matmul(a, b):
     # 1D launch kernel where each block gets its own program.
     
     # grid = lambda META: (triton.cdiv(M, META['BLOCK_SIZE_M']) * triton.cdiv(N, META['BLOCK_SIZE_N']), )
-    return matmul_kernel(
+    return _matmul_kernel(
         a, b, c,  #
         M, N, K,  #
         a.stride(0), a.stride(1),  #
@@ -44,9 +45,12 @@ def matmul(a, b):
     )
     # return c
 
-def getMatmulSignature():
-    a = torch.randn((1024, 1024), device='cuda', dtype=torch.float32)
-    b = torch.randn((1024, 1024), device='cuda', dtype=torch.float32)
+
+# public interface:
+def getMatmulSignature(dtypeA, dtypeB):
+    # signature只和输入的dtype有关，尺寸无关
+    a = torch.randn((10, 10), device='cuda', dtype=dtypeA)
+    b = torch.randn((10, 10), device='cuda', dtype=dtypeB)
     # get function signature
-    outSignature = matmul(a, b)
+    outSignature = _matmul(a, b)
     return outSignature

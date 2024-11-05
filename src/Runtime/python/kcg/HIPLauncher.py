@@ -33,7 +33,7 @@ def make_stub(kernelLibFile : KernelLibFile) -> str :
     if cache_path is None:
         with tempfile.TemporaryDirectory() as tmpdir:
             
-            # src = generate_launcher_hip(kernelLibFile)
+            src = generate_launcher_hip(kernelLibFile)
             src = []
             with open("/home/pangyunfei/xushilong/KernelCodeGen/stubCode_hip.cpp") as ff:
                 src = ff.readlines()
@@ -389,10 +389,11 @@ class MockData :
         self.grid_2 = 1
         self.num_warps = 8
         self.num_ctas = 1
-        self.clusterDims_0 = 1
-        self.clusterDims_1 = 1
-        self.clusterDims_2 = 1
+        self.clusterDims = [1,1,1]
         self.shared = 16896
+        self.enterHookFunc = None
+        self.exitHookFunc = None
+        # self.shared = 40000
 
 
 class HIPLauncher :
@@ -433,9 +434,12 @@ class HIPLauncher :
             raise Exception("kcg: _getWrapper failed")
         
         wrapper(m.grid_0,m.grid_1,m.grid_2,m.num_warps,m.num_ctas,
-                m.clusterDims_0,m.clusterDims_1,m.clusterDims_2,
+                m.clusterDims[0],m.clusterDims[1],m.clusterDims[2],
                 m.shared,stream,
-                self.m_kernelLib.m_kernelInfo.m_function, None,None,self,*args )
+                self.m_kernelLib.m_kernelInfo.m_function, 
+                m.enterHookFunc,
+                m.exitHookFunc,
+                self,*args )
         # self.c_wrapper(grid[0], grid[1], grid[2], self.num_warps, self.num_ctas, self.clusterDims[0],
         #     self.clusterDims[1], self.clusterDims[2], self.shared, stream, self.cu_function,
         #     CompiledKernel.launch_enter_hook, CompiledKernel.launch_exit_hook, self, *args_expand)

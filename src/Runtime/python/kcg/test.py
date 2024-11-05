@@ -13,13 +13,17 @@ from kcg.Operators import matmul
 hsacoPath='/home/pangyunfei/xushilong/KernelCodeGen/src/Runtime/python/kcg/amd_triton_kernel-762981.hsaco'
 funName = 'matmul_kernel_0d1d2d3de4de5de6de7c8de9c10de11c'
 
-o = CompiledKernelFactory.getKernel(EnumOperator.Matmul)
+inConfig = UserInputs()
+inConfig.operatorKind = EnumOperator.Matmul
+inConfig.dtype_0 = torch.float32
+inConfig.dtype_1 = torch.float32
+
+o = CompiledKernelFactory.getKernel(inConfig)
 # 需要根据前端调用形式，对run的参数进行确定.并修改operator的参数模板
     # M, K = a.shape
     # K, N = b.shape
     # # Allocates output.
-    # c = torch.empty((M, N), device=a.device, dtype=a.dtype)
-    # # 1D launch kernel where each block gets its own program.
+    # c = torch.empty((M, N), device=a.device, dtype=dataType)dataType 1D launch kernel where each block gets its own program.
     # grid = lambda META: (triton.cdiv(M, META['BLOCK_SIZE_M']) * triton.cdiv(N, META['BLOCK_SIZE_N']), )
     # matmul_kernel[grid](
     #     a, b, c,  #
@@ -29,10 +33,11 @@ o = CompiledKernelFactory.getKernel(EnumOperator.Matmul)
     #     c.stride(0), c.stride(1),  #
     #     ACTIVATION=activation  #
     # )
-a = torch.rand(1024,1024,dtype=torch.float32,device='cuda')
-b = torch.rand(1024,1024,dtype=torch.float32,device='cuda')
-c = torch.empty(1024,1024,dtype=torch.float32,device='cuda')
-d = torch.empty(1024,1024,dtype=torch.float32,device='cuda')
+dim = 1024
+a = torch.rand(dim,dim,dtype=inConfig.dtype_0,device='cuda')
+b = torch.rand(dim,dim,dtype=inConfig.dtype_1,device='cuda')
+c = torch.empty(dim,dim,dtype=inConfig.dtype_0,device='cuda')
+d = torch.empty(dim,dim,dtype=inConfig.dtype_0,device='cuda')
 M, K = a.shape
 K, N = b.shape
 o.run(a,b,c,M,N,K, a.stride(0), a.stride(1),  
